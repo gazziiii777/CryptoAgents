@@ -1,0 +1,122 @@
+# ============ Python ============
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+.Python
+.installer.cfg
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ============ Virtual environments ============
+.venv/
+venv/
+env/
+ENV/
+
+# ============ Secrets (КРИТИЧНО) ============
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+credentials.json
+
+# ============ Trading state / runtime data ============
+# SQLite БД создаётся по пути TRADINGAGENTS_DB_PATH (default ~/.tradingagents/trading.db)
+# Если кто-то запустит из проекта — *.db файлы появятся локально, не должны коммититься
+*.db
+*.db-wal
+*.db-shm
+*.db.backup
+*.sqlite
+*.sqlite3
+backups/
+data/
+.tradingagents/
+
+# ============ Logs ============
+*.log
+logs/
+log/
+
+# ============ Tests / lint / type caches ============
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# ============ Coverage ============
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+.cache
+nosetests.xml
+
+# ============ IDE ============
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
+.ropeproject
+
+# ============ Jupyter / IPython ============
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ============ OS files ============
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ============ Project-specific ============
+ReferenceTradingAgents/
+research/data/
+research/report.txt
+research/recommended_thresholds.json
+
+# Локальные artifact'ы калибровки до того как они стабилизируются в страт-version
+research/*.parquet
+research/*.csv
+research/cache/
+
+# CoinGlass endpoint discovery (рабочий черновик)
+coinglass_endpoints_needed.txt
+
+# ============ LangGraph Studio ============
+.langgraph_api/
+.langgraph/
+
+# ============ Docker (если будут локальные overrides) ============
+docker-compose.override.yml
+.docker/
+
+# ============ Misc ============
+*.bak
+*.tmp
+*.orig
+.history/

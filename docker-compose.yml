@@ -1,0 +1,7 @@
+services:
+  enricher:
+    build: .
+    env_file: .env
+    restart: "no"
+    tty: true
+    command: ["enrich", "--symbols"]

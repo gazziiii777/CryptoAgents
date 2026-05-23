@@ -1,0 +1,145 @@
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "docker",
+    "ReferenceTradingAgents",
+]
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+select = [
+    "E",    # pycodestyle (включая длину строки и базовый стиль)
+    "W",    # pycodestyle warning'и (пробелы, форматирование)
+    "F",    # pyflakes (мертвый код, неиспользуемые импорты/переменные)
+    "Q",    # Двойные кавычки
+    "ERA",  # Закомментированный код
+    "T20",  # print\pprint
+    "TID252",   # Относительные импорты
+    "N815",   # pep8-naming: запрет camelCase переменных в классах (включая поля Pydantic)
+    "ANN",    # flake8-annotations (обязательные аннотации типов)
+    "UP006",  # pyupgrade: list/dict/set вместо typing.List/Dict/Set
+    "UP007",  # pyupgrade: X | Y вместо Union[X, Y]
+    "UP045",  # pyupgrade: X | None вместо Optional[X]
+]
+ignore = ["E501"]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+#Allow to check rules that in preview
+preview = true
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 88
+
+[tool.ruff.lint.per-file-ignores]
+"shell/commands/**" = ["T201", "ERA"]
+"tests/**/*.py" = ["ANN"]
+"research/**/*.py" = ["ANN", "T20", "T201", "ERA"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = true
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+#Allow to format code for rules that in preview
+preview = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: pure logic, no external services (fast, default)",
+    "integration: requires Docker/real services (slow, opt-in)",
+]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "-m", "not integration",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "main.py"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 75
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[project]
+name = "tradingagents"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "ccxt>=4.4",
+    "httpx>=0.28.1",
+    "numpy>=2.0",
+    "pandas>=3.0.3",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "python-binance>=1.0.36",
+    "python-dotenv>=1.2.2",
+    "ta>=0.11.0",
+]
+
+[dependency-groups]
+dev = [
+    "instructor>=1.0",
+    "langchain>=0.3",
+    "langchain-anthropic>=0.3",
+    "langchain-openai>=0.3",
+    "langgraph>=0.4",
+    "litellm>=1.0",
+]
+research = [
+    "pyarrow>=20.0",
+    "scipy>=1.14",
+]
