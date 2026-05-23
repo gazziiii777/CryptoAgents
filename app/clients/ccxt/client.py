@@ -5,7 +5,7 @@ import logging
 import ccxt.async_support as ccxt
 
 from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
-from app.core import settings
+from core import settings
 
 logger = logging.getLogger(__name__)
 

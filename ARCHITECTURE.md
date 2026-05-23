@@ -583,7 +583,7 @@ Industry consensus (AQR, Man Group, Research Affiliates): систематиче
 **Реакция**:
 - Auto-recalibration **НЕ** запускается (опасно)
 - Event(event_type='drift_detected', payload={metric, value, baseline})
-- Telegram alert пользователю с просьбой проверить research/ калибровку
+- Telegram alert пользователю с просьбой проверить scripts/research/ калибровку
 - В Open Questions: считать ли drift достаточным для halt'а новых сигналов до ручной recalibration
 
 ### Event log retention
@@ -942,7 +942,7 @@ Signal(generated)
 3. Сдвинуть окно на 7d, повторить.
 4. Aggregate тестовые метрики; финальный SR обязательно проходит DSR с числом trials = размер сетки гиперпараметров.
 
-**Калибровка в `research/recommended_thresholds.json` должна быть пересчитана с этим протоколом** — текущая (2026-05-22) скорее всего не PIT-correct (universe сегодняшний, survivor bias возможен).
+**Калибровка в `scripts/research/recommended_thresholds.json` должна быть пересчитана с этим протоколом** — текущая (2026-05-22) скорее всего не PIT-correct (universe сегодняшний, survivor bias возможен).
 
 ---
 
@@ -1279,7 +1279,7 @@ Signal(generated)
 - Screener: ADX gate + 15-критериальный score + direction (11 голосов)
 - CoinGlass rate limiting (leaky bucket + Event gate)
 - Все data clients (CcxtClient, BinanceClient, CoinGlassClient)
-- Калибровка IC/ICIR на 200 символах × 90 дней (research/):
+- Калибровка IC/ICIR на 200 символах × 90 дней (scripts/research/):
   - Сильные сигналы: funding_bias (ICIR 0.96 @ 0.15%), MACD (t=5.49)
   - Слабые cross-sectional: volume_spike, bb_squeeze, OI change (IC≈0)
   - Пороги применены в конфигурации из артефакта калибровки

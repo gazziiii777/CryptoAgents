@@ -7,7 +7,7 @@ import httpx
 
 from app.clients._shared.errors import log_api_error, log_key_status
 from app.clients.coingecko.models import MacroSnapshot
-from app.core import settings
+from core import settings
 
 logger = logging.getLogger(__name__)
 

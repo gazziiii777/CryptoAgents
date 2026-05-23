@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from app.core import settings
+from core import settings
 
 
 def register(sub: argparse._SubParsersAction) -> None:

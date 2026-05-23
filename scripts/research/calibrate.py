@@ -2,13 +2,13 @@
 """Запускает полный цикл калибровки если данные устарели.
 
 Использование:
-    python research/calibrate.py               # запуск если данные > 90 дней
-    python research/calibrate.py --force       # принудительный перезапуск
-    python research/calibrate.py --check-only  # только статус, без запуска
-    python research/calibrate.py --max-age-days 60
+    python scripts/research/calibrate.py               # запуск если данные > 90 дней
+    python scripts/research/calibrate.py --force       # принудительный перезапуск
+    python scripts/research/calibrate.py --check-only  # только статус, без запуска
+    python scripts/research/calibrate.py --max-age-days 60
 
 Cron (ежемесячно, 3-е число в 3:00):
-    0 3 3 * * cd /path/to/TradingAgents && python research/calibrate.py >> research/calibrate.log 2>&1
+    0 3 3 * * cd /path/to/TradingAgents && python scripts/research/calibrate.py >> scripts/research/calibrate.log 2>&1
 """
 
 from __future__ import annotations

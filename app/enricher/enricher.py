@@ -18,8 +18,8 @@ from app.clients.lunarcrush.models import (
     LunarCrushPost,
     WhatsupSummary,
 )
-from app.core.symbols import normalized_base
-from app.core import settings
+from core.symbols import normalized_base
+from core import settings
 from app.enricher.insight import SocialInsight, derive_social_insight
 from app.screener.criteria import ScreenerResult
 

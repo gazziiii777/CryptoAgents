@@ -10,8 +10,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
-COPY shell/ ./shell/
+COPY core/ ./core/
+COPY db/ ./db/
+COPY cli/ ./cli/
+COPY migrations/ ./migrations/
+COPY alembic.ini .
 COPY main.py .
 
-ENTRYPOINT ["python", "-m", "shell"]
-CMD ["enrich"]
+ENTRYPOINT ["python", "-m", "cli"]
+CMD ["--help"]

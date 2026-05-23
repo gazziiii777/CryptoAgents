@@ -6,7 +6,7 @@ import logging
 from app.clients.binance.client import BinanceClient
 from app.clients.ccxt.client import CcxtClient
 from app.clients.coinglass.client import CoinGlassAuthError, CoinGlassClient
-from app.core import settings
+from core import settings
 from app.screener.criteria import ScreenerResult, evaluate_symbol
 from app.screener.universe import get_liquid_perp_pairs
 

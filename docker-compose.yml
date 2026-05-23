@@ -1,7 +1,19 @@
+# Usage:
+#   docker compose build                          # один раз после изменений Dockerfile/deps
+#   docker compose run --rm app screener          # запустить screener
+#   docker compose run --rm app enrich            # запустить enricher
+#   docker compose run --rm app db create-account --name primary --initial-balance 10000
+#   docker compose run --rm app db show-account
+#   docker compose run --rm --entrypoint alembic app upgrade head   # миграции
+#
+# Контейнер выходит после каждой команды (--rm чистит его).
+# Локальная папка ./data примонтирована в /app/data — БД одна и та же
+# на хосте и в контейнере.
 services:
-  enricher:
+  app:
     build: .
     env_file: .env
-    restart: "no"
-    tty: true
-    command: ["enrich", "--symbols"]
+    volumes:
+      - ./data:/app/data
+    # Команда передаётся через `docker compose run app <subcommand>`.
+    # ENTRYPOINT = "python -m cli", поэтому <subcommand> = первый аргумент cli.

@@ -13,7 +13,7 @@ from app.clients.lunarcrush.models import (
     WhatsupSummary,
     WhatsupTheme,
 )
-from app.core import settings
+from core import settings
 
 _FROZEN = ConfigDict(frozen=True, extra="ignore")
 

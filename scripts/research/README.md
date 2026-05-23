@@ -1,4 +1,4 @@
-# research/ — калибровка сигналов скринера
+# scripts/research/ — калибровка сигналов скринера
 
 Три CLI-скрипта для загрузки исторических данных, оценки качества сигналов
 и автоматического запуска калибровки по расписанию.
@@ -96,7 +96,7 @@ uv sync --group research
 ## Шаг 1: сбор данных
 
 ```bash
-python research/collect_data.py [--symbols N] [--days N] [--min-volume USD] [--refresh]
+python scripts/research/collect_data.py [--symbols N] [--days N] [--min-volume USD] [--refresh]
 ```
 
 | Параметр | Умолчание | Описание |
@@ -110,7 +110,7 @@ Binance Futures имеет 300+ USDT-перп пар, но большинств�
 объёмом < $1M/сутки. Фильтр по умолчанию ($5M) оставляет ~80–120 реально торгуемых пар
 и исключает шум из IC-расчётов.
 
-Каждый символ → `research/data/<SYMBOL>.parquet`:
+Каждый символ → `scripts/scripts/research/data/<SYMBOL>.parquet`:
 
 ```text
 open, high, low, close, volume   (OHLCV 4h)
@@ -125,13 +125,13 @@ vol_delta                        (per-period taker delta = buy_vol*2 - total_vol
 ## Шаг 2: анализ
 
 ```bash
-python research/analyze.py [--forward-hours N] [--data DIR]
+python scripts/research/analyze.py [--forward-hours N] [--data DIR]
 ```
 
 | Параметр | Умолчание | Описание |
 | --- | --- | --- |
 | `--forward-hours` | 12 | Горизонт форвардной доходности (кратно 4) |
-| `--data` | research/data/ | Папка с parquet-файлами |
+| `--data` | scripts/scripts/research/data/ | Папка с parquet-файлами |
 
 Что делает:
 
@@ -143,8 +143,8 @@ python research/analyze.py [--forward-hours N] [--data DIR]
 6. Печатает отчёт и сохраняет `report.txt`
 
 ```bash
-python research/analyze.py --forward-hours 12
-python research/analyze.py --forward-hours 24
+python scripts/research/analyze.py --forward-hours 12
+python scripts/research/analyze.py --forward-hours 24
 ```
 
 ---
@@ -152,29 +152,29 @@ python research/analyze.py --forward-hours 24
 ## Шаг 3: автозапуск (calibrate.py)
 
 ```bash
-python research/calibrate.py               # запустит если данные > 90 дней
-python research/calibrate.py --force       # принудительный перезапуск
-python research/calibrate.py --check-only  # статус без запуска
-python research/calibrate.py --max-age-days 60
+python scripts/research/calibrate.py               # запустит если данные > 90 дней
+python scripts/research/calibrate.py --force       # принудительный перезапуск
+python scripts/research/calibrate.py --check-only  # статус без запуска
+python scripts/research/calibrate.py --max-age-days 60
 ```
 
 Добавить в cron (каждое 3-е число в 3:00):
 
 ```bash
-0 3 3 * * cd /path/to/TradingAgents && python research/calibrate.py >> research/calibrate.log 2>&1
+0 3 3 * * cd /path/to/TradingAgents && python scripts/research/calibrate.py >> scripts/research/calibrate.log 2>&1
 ```
 
 `main.py` автоматически предупреждает в логах если данные устарели:
 
 ```text
-WARNING — Calibration data is 95 days old. Run: python research/calibrate.py
+WARNING — Calibration data is 95 days old. Run: python scripts/research/calibrate.py
 ```
 
 ---
 
 ## Применение результатов
 
-1. Открой `research/report.txt`
+1. Открой `scripts/research/report.txt`
 2. **IC table**: оставляй только сигналы с |t\_stat| > 1.5 И IC\_OOS близким к IC\_IS
 3. **Decay**: halflife < 8h → смотри скринер чаще; halflife > 48h → ежедневно достаточно
 4. **Sweep**: пороги с ICIR > 0.5 и hit\_rate > 1% переноси в `settings.py`

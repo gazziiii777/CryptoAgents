@@ -1,0 +1,6 @@
+Alembic migrations.
+
+Workflow:
+  alembic revision --autogenerate -m "msg"
+  alembic upgrade head
+  alembic downgrade -1

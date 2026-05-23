@@ -95,14 +95,14 @@ Desktop.ini
 
 # ============ Project-specific ============
 ReferenceTradingAgents/
-research/data/
-research/report.txt
-research/recommended_thresholds.json
+scripts/research/data/
+scripts/research/report.txt
+scripts/research/recommended_thresholds.json
 
 # Локальные artifact'ы калибровки до того как они стабилизируются в страт-version
-research/*.parquet
-research/*.csv
-research/cache/
+scripts/research/*.parquet
+scripts/research/*.csv
+scripts/research/cache/
 
 # CoinGlass endpoint discovery (рабочий черновик)
 coinglass_endpoints_needed.txt

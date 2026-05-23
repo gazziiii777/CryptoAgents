@@ -2,9 +2,9 @@
 """Скачивает исторические данные по топ-N перп-парам для калибровки сигналов.
 
 Использование:
-    python research/collect_data.py [--symbols N] [--days N] [--refresh]
+    python scripts/research/collect_data.py [--symbols N] [--days N] [--refresh]
 
-Выходные файлы: research/data/<SYMBOL>.parquet (один файл на монету)
+Выходные файлы: scripts/scripts/research/data/<SYMBOL>.parquet (один файл на монету)
 Колонки: open, high, low, close, volume, funding_rate, open_interest,
          long_short_ratio, vol_delta
 """
@@ -24,7 +24,7 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 load_dotenv(_ROOT / ".env")
 
-from app.core import settings  # noqa: E402
+from core import settings  # noqa: E402
 from app.clients.binance_client import BinanceClient  # noqa: E402
 from app.clients.ccxt_client import CcxtClient, make_exchange  # noqa: E402
 

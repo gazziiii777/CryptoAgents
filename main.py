@@ -19,16 +19,16 @@ _CALIBRATION_MAX_AGE_DAYS = 90
 
 
 def _warn_if_calibration_stale() -> None:
-    data_dir = Path(__file__).parent / "research" / "data"
+    data_dir = Path(__file__).parent / "scripts" / "research" / "data"
     files = list(data_dir.glob("*.parquet"))
     if not files:
-        logger.warning("No calibration data. Run: python research/calibrate.py")
+        logger.warning("No calibration data. Run: python scripts/research/calibrate.py")
         return
     age_days = (time.time() - min(f.stat().st_mtime for f in files)) / 86400
     if age_days > _CALIBRATION_MAX_AGE_DAYS:
         logger.warning(
             "Calibration data is %.0f days old — thresholds may be stale. "
-            "Run: python research/calibrate.py",
+            "Run: python scripts/research/calibrate.py",
             age_days,
         )
 

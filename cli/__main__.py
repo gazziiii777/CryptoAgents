@@ -10,12 +10,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.logger import setup_logging  # noqa: E402
-from shell.commands import enrich, keys_check, lc_test, screener, selftest  # noqa: E402
+from cli.commands import db, enrich, keys_check, lc_test, screener, selftest  # noqa: E402
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m shell",
+        prog="python -m cli",
         description=(
             "TradingAgents CLI. Subcommands run individual stages of the pipeline "
             "(screener, enrich) or diagnostic helpers (keys-check, lc-test). "
@@ -32,6 +32,7 @@ def _build_parser() -> argparse.ArgumentParser:
     enrich.register(sub)
     lc_test.register(sub)
     selftest.register(sub)
+    db.register(sub)
 
     return parser
 

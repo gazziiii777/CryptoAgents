@@ -9,7 +9,7 @@ from app.clients.binance.client import BinanceClient
 from app.clients.binance.models import OISnapshot
 from app.clients.ccxt.client import CcxtClient
 from app.clients.coinglass.client import CoinGlassAuthError, CoinGlassClient
-from app.core import settings
+from core import settings
 from app.screener.indicators import (
     calc_adx,
     calc_atr,

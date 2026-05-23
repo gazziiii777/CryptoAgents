@@ -25,8 +25,8 @@ from app.clients.coinglass.models import (
     TokenUnlockEntry,
     TopPositionRatio,
 )
-from app.core import settings
-from app.core.symbols import base_currency, to_exchange_pair
+from core import settings
+from core.symbols import base_currency, to_exchange_pair
 
 logger = logging.getLogger(__name__)
 

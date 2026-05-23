@@ -9,7 +9,7 @@ import ta
 from app.clients.binance.models import CVDPoint, OISnapshot
 from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
 from app.clients.coinglass.models import FundingRateOHLC, LiquidationHistoryPoint
-from app.core import settings
+from core import settings
 
 logger = logging.getLogger(__name__)
 

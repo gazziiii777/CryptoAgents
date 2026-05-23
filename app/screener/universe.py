@@ -5,7 +5,7 @@ import logging
 
 
 from app.clients.ccxt.client import make_exchange
-from app.core import settings
+from core import settings
 
 logger = logging.getLogger(__name__)
 

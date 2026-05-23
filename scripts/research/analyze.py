@@ -2,11 +2,11 @@
 """Вычисляет cross-sectional IC, ICIR и decay-кривые сигналов; подбирает пороги.
 
 Использование:
-    python research/analyze.py [--forward-hours N] [--data DIR]
+    python scripts/research/analyze.py [--forward-hours N] [--data DIR]
 
 Выходные файлы:
-    research/report.txt                   -- текстовый отчёт
-    research/recommended_thresholds.json  -- рекомендуемые настройки для settings.py
+    scripts/research/report.txt                   -- текстовый отчёт
+    scripts/research/recommended_thresholds.json  -- рекомендуемые настройки для settings.py
 
 Методология:
     Cross-sectional Spearman IC — в каждый момент t ранжирует все символы по сигналу
@@ -554,7 +554,7 @@ if __name__ == "__main__":
         type=Path,
         default=_DATA_DIR,
         metavar="DIR",
-        help="directory with parquet files (default: research/data)",
+        help="directory with parquet files (default: scripts/research/data)",
     )
     args = parser.parse_args()
     if args.forward_hours % 4 != 0:

@@ -1,4 +1,9 @@
+from pathlib import Path
+
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
@@ -8,6 +13,22 @@ class Settings(BaseSettings):
 
     EXCHANGE_ID: str = "binance"
     QUOTE_CURRENCY: str = "USDT"
+
+    DB_PATH: Path = _PROJECT_ROOT / "data" / "trading.db"
+    DB_BACKUP_DIR: Path = _PROJECT_ROOT / "data" / "backups"
+    DB_BUSY_TIMEOUT_MS: int = Field(default=5000, ge=1000, le=60000)
+    DB_BACKUP_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
+    DB_BACKUP_MAX_AGE_HOURS: int = Field(default=25, ge=1, le=168)
+
+    @computed_field
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"sqlite+aiosqlite:///{self.DB_PATH}"
+
+    @computed_field
+    @property
+    def DATABASE_URL_SYNC(self) -> str:
+        return f"sqlite:///{self.DB_PATH}"
 
     UNIVERSE_MIN_VOLUME_USD: float = 5_000_000
 

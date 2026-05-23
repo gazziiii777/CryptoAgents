@@ -5,8 +5,8 @@ import logging
 from binance import AsyncClient
 
 from app.clients.binance.models import CVDPoint, LongShortRatio, OISnapshot
-from app.core import settings
-from app.core.symbols import to_exchange_pair
+from core import settings
+from core.symbols import to_exchange_pair
 
 logger = logging.getLogger(__name__)
 

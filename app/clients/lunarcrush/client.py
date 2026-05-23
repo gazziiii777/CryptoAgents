@@ -23,8 +23,8 @@ from app.clients.lunarcrush.parsers import (
     safe_float,
     safe_int,
 )
-from app.core import settings
-from app.core.symbols import normalized_base
+from core import settings
+from core.symbols import normalized_base
 
 logger = logging.getLogger(__name__)
 
