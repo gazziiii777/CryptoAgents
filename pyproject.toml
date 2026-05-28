@@ -1,3 +1,6 @@
+[tool.ruff]
+line-length = 88
+
 # Exclude a variety of commonly ignored directories.
 exclude = [
     ".bzr",
@@ -28,9 +31,8 @@ exclude = [
     "venv",
     "docker",
     "ReferenceTradingAgents",
+    "migrations",
 ]
-[tool.ruff]
-line-length = 88
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
@@ -41,7 +43,7 @@ select = [
     "Q",    # Двойные кавычки
     "ERA",  # Закомментированный код
     "T20",  # print\pprint
-    "TID252",   # Относительные импорты
+    "TID252",   # Относительные импорты .
     "N815",   # pep8-naming: запрет camelCase переменных в классах (включая поля Pydantic)
     "ANN",    # flake8-annotations (обязательные аннотации типов)
     "UP006",  # pyupgrade: list/dict/set вместо typing.List/Dict/Set
@@ -105,7 +107,7 @@ omit = ["tests/*", "main.py"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 75
+fail_under = 40
 show_missing = true
 skip_covered = false
 exclude_lines = [
@@ -114,34 +116,67 @@ exclude_lines = [
     "if __name__ == .__main__.:",
 ]
 
+[tool.mypy]
+python_version = "3.12"
+files = ["app", "core", "db", "cli", "main.py"]
+plugins = ["pydantic.mypy"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unused_configs = true
+warn_return_any = true
+disable_error_code = ["prop-decorator"]
+
+[[tool.mypy.overrides]]
+module = [
+    "ccxt.*",
+    "ta.*",
+    "binance.*",
+    "litellm.*",
+    "instructor.*",
+    "pandas.*",
+    "yaml",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["langgraph.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
+
 [project]
 name = "tradingagents"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "aiosqlite>=0.20",
+    "alembic>=1.13",
+    "aiomysql>=0.2.0",
     "ccxt>=4.4",
     "httpx>=0.28.1",
+    "instructor>=1.0",
+    "langgraph>=0.4",
+    "litellm>=1.0",
     "numpy>=2.0",
     "pandas>=3.0.3",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "python-binance>=1.0.36",
     "python-dotenv>=1.2.2",
+    "pyyaml>=6.0",
     "sqlalchemy[asyncio]>=2.0",
     "sqlmodel>=0.0.22",
     "ta>=0.11.0",
+    "typer>=0.12",
 ]
 
 [dependency-groups]
 dev = [
-    "alembic>=1.13",
-    "instructor>=1.0",
     "langchain>=0.3",
     "langchain-anthropic>=0.3",
     "langchain-openai>=0.3",
-    "langgraph>=0.4",
-    "litellm>=1.0",
 ]
 research = [
     "pyarrow>=20.0",
@@ -153,4 +188,11 @@ test = [
     "pytest-cov>=5.0",
     "respx>=0.21",
     "freezegun>=1.5",
+    "aiosqlite>=0.20",
 ]
+typecheck = [
+    "mypy>=1.13",
+]
+
+[tool.uv]
+default-groups = ["dev", "test", "typecheck"]

@@ -1,19 +1,111 @@
 # Usage:
-#   docker compose build                          # один раз после изменений Dockerfile/deps
-#   docker compose run --rm app screener          # запустить screener
-#   docker compose run --rm app enrich            # запустить enricher
-#   docker compose run --rm app db create-account --name primary --initial-balance 10000
-#   docker compose run --rm app db show-account
-#   docker compose run --rm --entrypoint alembic app upgrade head   # миграции
+#   docker compose up -d                        # поднять всё (db + migrate + worker)
+#   docker compose logs -f worker               # логи планировщика
+#   docker compose down                          # стоп всё, данные в ./mariadata остаются
+#   docker compose run --rm app keys-check       # разовая команда
+#   docker compose run --rm app pipeline -n 6    # smoke: топ-6 пар
+#   docker compose run --rm app run --once -n 3  # один полный тик
+#   docker compose exec db mariadb -u tradingagents -p tradingagents  # SQL консоль
 #
-# Контейнер выходит после каждой команды (--rm чистит его).
-# Локальная папка ./data примонтирована в /app/data — БД одна и та же
-# на хосте и в контейнере.
+# Первый запуск (ОДИН раз) — сгенерить initial-миграцию:
+#   docker compose up -d db
+#   docker compose run --rm app alembic revision --autogenerate -m "initial schema"
+#   docker compose up -d
+#
+# Новая миграция (после изменения модели):
+#   docker compose run --rm app alembic revision --autogenerate -m "add foo"
+#   docker compose up -d   # migrate сервис сам подхватит и применит
+#
+# БД-данные лежат на хосте в ./mariadata. Порт 3306 биндится только на 127.0.0.1.
 services:
+  # MariaDB: торговая схема + research (создаётся init-скриптом из ops/db-init).
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max-connections=200
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-tradingagents_root}
+      MARIADB_DATABASE: tradingagents
+      MARIADB_USER: tradingagents
+      MARIADB_PASSWORD: ${DB_PASSWORD:-tradingagents}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    volumes:
+      - ./mariadata:/var/lib/mysql
+      - ./ops/db-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+
+  # Одноразовая миграция: ждёт db healthy, делает alembic upgrade head, exits.
+  # profiles: ["init"] — запускается ТОЛЬКО когда активирован профиль init.
+  # Локально активируется через COMPOSE_PROFILES=init в .env (см. ниже).
+  # На проде .env профиль НЕ задаёт → миграции применяются вручную.
+  migrate:
+    build: .
+    entrypoint: ["alembic", "upgrade", "head"]
+    env_file: .env
+    restart: "no"
+    profiles: ["init"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/app/migrations:ro
+
+  # Долгоживущий планировщик: тикает каждые 4h (watcher → pipeline).
+  # depends_on.migrate.required=false → если профиль init не активен (прод),
+  # worker НЕ ждёт migrate, стартует сразу после db. Локально с COMPOSE_PROFILES=init
+  # migrate включён в активный набор → worker ждёт его completion.
+  worker:
+    build: .
+    env_file: .env
+    command: ["run"]
+    restart: unless-stopped
+    stop_grace_period: 30s
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+        required: false
+
+  # Периодический логический бэкап обеих БД (mariadb-dump → gzip) с ротацией.
+  # Сайдкар: не зависит от worker. Дампы — на хосте в ./backups.
+  backup:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: ${DB_USER:-tradingagents}
+      DB_PASSWORD: ${DB_PASSWORD:-tradingagents}
+      DB_NAME: ${DB_NAME:-tradingagents}
+      DB_RESEARCH_NAME: ${DB_RESEARCH_NAME:-research}
+      DB_BACKUP_INTERVAL_S: ${DB_BACKUP_INTERVAL_S:-86400}
+      DB_BACKUP_RETENTION_DAYS: ${DB_BACKUP_RETENTION_DAYS:-7}
+    entrypoint: ["bash", "/backup.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backups:/backups
+      - ./ops/backup.sh:/backup.sh:ro
+
+  # Разовые команды: `docker compose run --rm app <cmd>`.
+  # Bind mount ./migrations rw — чтобы `alembic revision --autogenerate`
+  # писал файлы на хост (а не в эфемерный контейнер).
   app:
     build: .
     env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      - ./data:/app/data
-    # Команда передаётся через `docker compose run app <subcommand>`.
-    # ENTRYPOINT = "python -m cli", поэтому <subcommand> = первый аргумент cli.
+      - ./migrations:/app/migrations

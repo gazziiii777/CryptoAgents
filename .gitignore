@@ -39,6 +39,7 @@ credentials.json
 *.sqlite3
 backups/
 data/
+mariadata/
 .tradingagents/
 
 # ============ Logs ============
@@ -114,6 +115,9 @@ coinglass_endpoints_needed.txt
 # ============ Docker (если будут локальные overrides) ============
 docker-compose.override.yml
 .docker/
+
+# ============ Local Make overrides (deploy SERVER_HOST, etc.) ============
+.make.local
 
 # ============ Misc ============
 *.bak

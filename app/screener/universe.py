@@ -1,13 +1,14 @@
-from __future__ import annotations
-
 import asyncio
 import logging
-
+from typing import Any
 
 from app.clients.ccxt.client import make_exchange
-from core import settings
+from app.clients.ccxt.models import CcxtMarket, CcxtTicker
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
+
+_CRYPTO_UNDERLYING_TYPE = "COIN"
 
 
 async def get_liquid_perp_pairs(
@@ -39,22 +40,24 @@ async def get_liquid_perp_pairs(
 
 
 def _filter_perp_pairs(
-    markets: dict, tickers: dict, quote_currency: str, min_volume_usd: float
+    markets: dict[str, Any],
+    tickers: dict[str, Any],
+    quote_currency: str,
+    min_volume_usd: float,
 ) -> list[str]:
     scored: list[tuple[str, float]] = []
 
-    for symbol, ticker in tickers.items():
-        market = markets.get(symbol)
-        if market is None:
+    for symbol, ticker_raw in tickers.items():
+        market_raw = markets.get(symbol)
+        if market_raw is None:
             continue
-        if not market["swap"]:
+        market = CcxtMarket.model_validate(market_raw)
+        if not market.swap or market.quote != quote_currency or not market.active:
             continue
-        if market["quote"] != quote_currency:
-            continue
-        if not market["active"]:
+        if market.underlying_type != _CRYPTO_UNDERLYING_TYPE:
             continue
 
-        volume_usd = ticker["quoteVolume"] or 0.0
+        volume_usd = CcxtTicker.model_validate(ticker_raw).quote_volume or 0.0
         if volume_usd < min_volume_usd:
             continue
 

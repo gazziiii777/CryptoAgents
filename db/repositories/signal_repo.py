@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from datetime import datetime
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from db.models import Signal
@@ -32,6 +30,6 @@ class SignalRepo:
 
     async def list_recent(self, limit: int = 50) -> list[Signal]:
         result = await self._session.exec(
-            select(Signal).order_by(Signal.ts.desc()).limit(limit)
+            select(Signal).order_by(col(Signal.ts).desc()).limit(limit)
         )
         return list(result.all())

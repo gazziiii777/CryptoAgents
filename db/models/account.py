@@ -6,6 +6,7 @@ from decimal import Decimal
 from sqlalchemy import Column
 from sqlmodel import Field, SQLModel
 
+from core.constants.markets import QUOTE_CURRENCY
 from db._time import utcnow
 from db.types import DecimalText, UTCDateTime
 
@@ -15,7 +16,7 @@ class Account(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True, max_length=64)
-    base_currency: str = Field(default="USDT", max_length=16)
+    base_currency: str = Field(default=QUOTE_CURRENCY, max_length=16)
 
     initial_balance: Decimal = Field(sa_column=Column(DecimalText, nullable=False))
     current_balance: Decimal = Field(sa_column=Column(DecimalText, nullable=False))

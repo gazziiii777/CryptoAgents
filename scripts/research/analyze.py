@@ -20,8 +20,6 @@
     IC decay — IC при горизонтах 4h..96h: показывает halflife предсказательной силы.
 """
 
-from __future__ import annotations
-
 import argparse
 import json
 import math
@@ -460,7 +458,7 @@ def _format_report(
     lines.append(
         "\nWARNING: thresholds chosen on IS data only. Check IC_OOS before applying."
     )
-    lines.append("Copy relevant values into app/core/settings.py.")
+    lines.append("Copy relevant values into core/settings.py.")
     return "\n".join(lines)
 
 
@@ -531,10 +529,10 @@ def main(fwd_hours: int, data_dir: Path) -> None:
     report = _format_report(ic_table, decay, sweeps, recommendations, fwd_hours)
     print("\n" + report)
 
-    _REPORT_PATH.write_text(report)
+    _REPORT_PATH.write_text(report, encoding="utf-8")
     print(f"\nSaved: {_REPORT_PATH}")
 
-    _JSON_PATH.write_text(json.dumps(recommendations, indent=2))
+    _JSON_PATH.write_text(json.dumps(recommendations, indent=2), encoding="utf-8")
     print(f"Saved: {_JSON_PATH}")
 
 

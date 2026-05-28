@@ -11,13 +11,13 @@ Cron (ежемесячно, 3-е число в 3:00):
     0 3 3 * * cd /path/to/TradingAgents && python scripts/research/calibrate.py >> scripts/research/calibrate.log 2>&1
 """
 
-from __future__ import annotations
-
 import argparse
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+from core.constants.time import SECONDS_PER_DAY
 
 _ROOT = Path(__file__).parent.parent
 _DATA_DIR = _ROOT / "research" / "data"
@@ -32,7 +32,7 @@ def data_age_days() -> float | None:
     if not files:
         return None
     oldest_mtime = min(f.stat().st_mtime for f in files)
-    return (time.time() - oldest_mtime) / 86400
+    return (time.time() - oldest_mtime) / SECONDS_PER_DAY
 
 
 def needs_calibration(max_age_days: int = _DEFAULT_MAX_AGE_DAYS) -> bool:

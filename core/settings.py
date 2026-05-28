@@ -1,9 +1,12 @@
-from pathlib import Path
-
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+from core.constants.llm import (
+    DEEP_MODEL_BY_PROVIDER,
+    QUICK_MODEL_BY_PROVIDER,
+    LLMProvider,
+)
+from core.constants.markets import QUOTE_CURRENCY as _QUOTE_CURRENCY
 
 
 class Settings(BaseSettings):
@@ -12,23 +15,33 @@ class Settings(BaseSettings):
     )
 
     EXCHANGE_ID: str = "binance"
-    QUOTE_CURRENCY: str = "USDT"
+    QUOTE_CURRENCY: str = _QUOTE_CURRENCY
 
-    DB_PATH: Path = _PROJECT_ROOT / "data" / "trading.db"
-    DB_BACKUP_DIR: Path = _PROJECT_ROOT / "data" / "backups"
-    DB_BUSY_TIMEOUT_MS: int = Field(default=5000, ge=1000, le=60000)
-    DB_BACKUP_RETENTION_DAYS: int = Field(default=7, ge=1, le=90)
-    DB_BACKUP_MAX_AGE_HOURS: int = Field(default=25, ge=1, le=168)
+    DB_HOST: str = "db"
+    DB_PORT: int = 3306
+    DB_USER: str = "tradingagents"
+    DB_PASSWORD: str = "tradingagents"
+    DB_NAME: str = "tradingagents"
+    DB_RESEARCH_NAME: str = "research"
+    DB_POOL_SIZE: int = Field(default=5, ge=1, le=50)
+    DB_MAX_OVERFLOW: int = Field(default=10, ge=0, le=100)
+    DB_POOL_RECYCLE_S: int = Field(default=3600, ge=60, le=86400)
 
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
-        return f"sqlite+aiosqlite:///{self.DB_PATH}"
+        return (
+            f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+        )
 
     @computed_field
     @property
-    def DATABASE_URL_SYNC(self) -> str:
-        return f"sqlite:///{self.DB_PATH}"
+    def RESEARCH_DATABASE_URL(self) -> str:
+        return (
+            f"mysql+aiomysql://{self.DB_USER}:{self.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_RESEARCH_NAME}?charset=utf8mb4"
+        )
 
     UNIVERSE_MIN_VOLUME_USD: float = 5_000_000
 
@@ -39,6 +52,7 @@ class Settings(BaseSettings):
     OI_HISTORY_LIMIT: int = 50
     LS_RATIO_LIMIT: int = 50
     SCREENER_LS_RATIO_LIMIT: int = 1
+    SCREENER_BASIS_LIMIT: int = 1
     CVD_CANDLES: int = 24
 
     HTTP_TIMEOUT_S: int = 10
@@ -74,6 +88,8 @@ class Settings(BaseSettings):
     COINGECKO_API_KEY: str = ""
     COINGLASS_API_KEY: str = ""
     LUNARCRUSH_API_KEY: str = ""
+    ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
 
     LUNARCRUSH_WHATSUP_ENABLED: bool = False
 
@@ -96,9 +112,42 @@ class Settings(BaseSettings):
 
     NEWS_FRESH_CATALYST_WINDOW_H: int = 24
     NEWS_TOP_K: int = 5
+    PUMP_INFLUENCER_MIN: int = Field(default=3, ge=1, le=100)
 
-    LLM_QUICK_MODEL: str = "claude-haiku-4-5"
-    LLM_DEEP_MODEL: str = "claude-sonnet-4-6"
+    LLM_PROVIDER: LLMProvider = LLMProvider.OPENAI
+
+    @computed_field
+    @property
+    def LLM_QUICK_MODEL(self) -> str:
+        return QUICK_MODEL_BY_PROVIDER[self.LLM_PROVIDER]
+
+    @computed_field
+    @property
+    def LLM_DEEP_MODEL(self) -> str:
+        return DEEP_MODEL_BY_PROVIDER[self.LLM_PROVIDER]
+
+    LLM_DAILY_BUDGET_USD: float = Field(default=5.0, ge=0.0, le=1000.0)
+    LLM_MAX_OUTPUT_TOKENS: int = Field(default=4096, ge=256, le=32000)
+    LLM_MAX_RETRIES: int = Field(default=2, ge=0, le=5)
+    LLM_TEMPERATURE: float = Field(default=0.2, ge=0.0, le=2.0)
+    LLM_TIMEOUT_S: float = Field(default=60.0, ge=5.0, le=600.0)
+
+    CONFLUENCE_GATE: float = Field(default=0.50, ge=0.0, le=1.0)
+    CONFIDENCE_SHRINKAGE: float = Field(default=0.75, ge=0.1, le=1.0)
+    RISK_REWARD_MIN: float = Field(default=1.5, ge=1.0, le=10.0)
+    FUNDING_COST_MAX_PCT: float = Field(default=0.01, ge=0.0, le=1.0)
+    FUNDING_EXTREME_PCT: float = Field(default=0.0030, gt=0.0, le=1.0)
+
+    DEFAULT_ACCOUNT_NAME: str = "paper"
+    DEFAULT_INITIAL_BALANCE: int = Field(default=2000, ge=1)
+    RISK_PER_TRADE_MIN_PCT: float = Field(default=0.005, gt=0.0, le=0.1)
+    RISK_PER_TRADE_MAX_PCT: float = Field(default=0.02, gt=0.0, le=0.2)
+    MAX_CONCURRENT_POSITIONS: int = Field(default=5, ge=1, le=50)
+    MAX_SAME_DIRECTION: int = Field(default=2, ge=1, le=50)
+    MAX_LEVERAGE: int = Field(default=10, ge=1, le=125)
+    DRAWDOWN_HALT_PCT: float = Field(default=0.10, gt=0.0, le=1.0)
+    FUNDING_KILL_SWITCH_PCT: float = Field(default=0.0025, gt=0.0, le=1.0)
+    TAKER_FEE_RATE: float = Field(default=0.0005, ge=0.0, le=0.01)
 
 
 settings = Settings()

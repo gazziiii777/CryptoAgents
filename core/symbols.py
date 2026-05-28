@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 _LEVERAGE_PREFIXES = ("1000000", "10000", "1000", "1M")
 
 
@@ -33,3 +31,8 @@ def to_exchange_pair(symbol: str) -> str:
     if len(parts) != 2 or ":" not in parts[1]:
         raise ValueError(f"Unexpected ccxt symbol format: {symbol!r}")
     return parts[0] + parts[1].split(":")[0]
+
+
+def to_ccxt_perp_symbol(base: str, quote: str) -> str:
+    """'BTC', 'USDT' → 'BTC/USDT:USDT'. Собирает ccxt swap-символ из базы и quote."""
+    return f"{base}/{quote}:{quote}"

@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 import logging
 
 import httpx
 
-_AUTH_STATUSES = (401, 403)
-_RATE_LIMIT_STATUS = 429
+from core.constants.http import AUTH_STATUS_CODES, RATE_LIMIT_STATUS
 
 
 def log_api_error(service: str, exc: BaseException, *, path: str | None = None) -> None:
@@ -23,7 +20,7 @@ def log_api_error(service: str, exc: BaseException, *, path: str | None = None) 
 
     if isinstance(exc, httpx.HTTPStatusError):
         status = exc.response.status_code
-        if status in _AUTH_STATUSES:
+        if status in AUTH_STATUS_CODES:
             logger.error(
                 "%s API KEY INVALID OR EXPIRED (status %d)%s — check %s_API_KEY env var",
                 service,
@@ -32,7 +29,7 @@ def log_api_error(service: str, exc: BaseException, *, path: str | None = None) 
                 service.upper(),
             )
             return
-        if status == _RATE_LIMIT_STATUS:
+        if status == RATE_LIMIT_STATUS:
             logger.warning(
                 "%s RATE LIMIT EXCEEDED (status 429)%s — request was throttled",
                 service,

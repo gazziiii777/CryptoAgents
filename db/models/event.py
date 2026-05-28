@@ -16,7 +16,8 @@ class Event(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     ts: datetime = Field(
-        default_factory=utcnow, sa_column=Column(UTCDateTime, nullable=False, index=True)
+        default_factory=utcnow,
+        sa_column=Column(UTCDateTime, nullable=False, index=True),
     )
 
     event_type: EventType = Field(index=True)

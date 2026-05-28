@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import logging
+from typing import Self
 
 import httpx
 
@@ -12,18 +11,8 @@ from app.clients.lunarcrush.models import (
     LunarCrushNewsItem,
     LunarCrushPost,
     WhatsupSummary,
-    WhatsupTheme,
 )
-from app.clients.lunarcrush.parsers import (
-    optional_str,
-    parse_categories,
-    parse_news_item,
-    parse_post,
-    parse_ts_point,
-    safe_float,
-    safe_int,
-)
-from core import settings
+from core.settings import settings
 from core.symbols import normalized_base
 
 logger = logging.getLogger(__name__)
@@ -37,6 +26,22 @@ _LC_RATE_PER_MIN = 9
 
 def _log_err(exc: BaseException, path: str) -> None:
     log_api_error(_SERVICE, exc, path=path)
+
+
+def _topic_slug(raw_topic: str, fallback: str) -> str:
+    """LunarCrush topic-слаг для /topic/* запросов.
+
+    Поле `topic` из /coins/list имеет формат «<symbol> <name…>» (напр.
+    «btc bitcoin», «near near protocol»). Слаг = имя без ведущего символа:
+    «btc bitcoin» → «bitcoin», «near near protocol» → «near protocol».
+    Односложный topic берём как есть, пустой → fallback.
+    """
+    parts = raw_topic.split()
+    if len(parts) > 1:
+        return " ".join(parts[1:])
+    if parts:
+        return parts[0]
+    return fallback
 
 
 class LunarCrushClient:
@@ -70,7 +75,7 @@ class LunarCrushClient:
         )
         self._rate_limiter = RateLimiter(_LC_RATE_PER_MIN)
 
-    async def __aenter__(self) -> LunarCrushClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -88,8 +93,7 @@ class LunarCrushClient:
     ) -> dict[str, LunarCrushCoinMetrics]:
         """Метрики по символам через /coins/list/v1 (galaxy_score, sentiment, categories).
 
-        Topic-slug: последнее слово поля topic (напр. "btc bitcoin" → "bitcoin",
-        "sol solana" → "solana"), что исключает коллизии типа "sol" → знаменитость.
+        Topic-slug для /topic/* считается через _topic_slug (имя без символа-префикса).
         Возвращает {normalized_symbol: metrics}.
         """
         if self._http is None or not symbols:
@@ -123,21 +127,12 @@ class LunarCrushClient:
             if item is None:
                 continue
             raw_topic = str(item.get("topic") or "")
-            topic_slug = raw_topic.split()[-1] if raw_topic.strip() else base.lower()
-            result[base] = LunarCrushCoinMetrics(
-                symbol=base,
-                name=optional_str(item.get("name")),
-                topic=topic_slug,
-                galaxy_score=safe_float(item.get("galaxy_score")),
-                galaxy_score_previous=safe_float(item.get("galaxy_score_previous")),
-                alt_rank=safe_int(item.get("alt_rank")),
-                alt_rank_previous=safe_int(item.get("alt_rank_previous")),
-                sentiment=safe_float(item.get("sentiment")),
-                social_volume_24h=safe_int(item.get("social_volume_24h")),
-                interactions_24h=safe_int(item.get("interactions_24h")),
-                social_dominance=safe_float(item.get("social_dominance")),
-                categories=parse_categories(item.get("categories")),
-            )
+            topic_slug = _topic_slug(raw_topic, base.lower())
+            result[base] = LunarCrushCoinMetrics.model_validate({
+                **item,
+                "symbol": base,
+                "topic": topic_slug,
+            })
 
         missing = {normalized_base(s) for s in symbols} - set(result.keys())
         if missing:
@@ -167,28 +162,9 @@ class LunarCrushClient:
             return None
 
         payload = resp.json()
-        summary_text = payload.get("summary")
-        if not summary_text:
+        if not payload.get("summary"):
             return None
-        return WhatsupSummary(
-            summary=summary_text,
-            supportive=[
-                WhatsupTheme(
-                    title=str(t.get("title", "")),
-                    description=str(t.get("description", "")),
-                    percent=safe_float(t.get("percent")) or 0.0,
-                )
-                for t in (payload.get("supportive") or [])
-            ],
-            critical=[
-                WhatsupTheme(
-                    title=str(t.get("title", "")),
-                    description=str(t.get("description", "")),
-                    percent=safe_float(t.get("percent")) or 0.0,
-                )
-                for t in (payload.get("critical") or [])
-            ],
-        )
+        return WhatsupSummary.model_validate(payload)
 
     async def fetch_topic_news(
         self, topic: str, limit: int | None = None
@@ -206,7 +182,7 @@ class LunarCrushClient:
 
         items = resp.json().get("data") or []
         n = limit if limit is not None else settings.LUNARCRUSH_NEWS_LIMIT
-        return [parse_news_item(item) for item in items[:n]]
+        return [LunarCrushNewsItem.model_validate(item) for item in items[:n]]
 
     async def fetch_topic_posts(
         self, topic: str, limit: int | None = None
@@ -224,7 +200,7 @@ class LunarCrushClient:
 
         items = resp.json().get("data") or []
         n = limit if limit is not None else settings.LUNARCRUSH_POSTS_LIMIT
-        return [parse_post(item) for item in items[:n]]
+        return [LunarCrushPost.model_validate(item) for item in items[:n]]
 
     async def fetch_coin_time_series(
         self, coin: str, bucket: str = "day", interval: str = "1w"
@@ -248,7 +224,7 @@ class LunarCrushClient:
             return []
 
         items = resp.json().get("data") or []
-        return [parse_ts_point(item) for item in items]
+        return [CoinTimeSeriesPoint.model_validate(item) for item in items]
 
     async def fetch_topic_ai_context(self, topic: str) -> str | None:
         """LLM-оптимизированный markdown-контекст по топику от lunarcrush.ai.

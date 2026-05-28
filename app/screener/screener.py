@@ -1,14 +1,14 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 
 from app.clients.binance.client import BinanceClient
 from app.clients.ccxt.client import CcxtClient
-from app.clients.coinglass.client import CoinGlassAuthError, CoinGlassClient
-from core import settings
-from app.screener.criteria import ScreenerResult, evaluate_symbol
+from app.clients.coinglass.client import CoinGlassClient
+from app.clients.coinglass.exceptions import CoinGlassAuthError
+from app.screener.evaluation import evaluate_symbol
+from app.models.screener import ScreenerResult
 from app.screener.universe import get_liquid_perp_pairs
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +24,17 @@ async def _evaluate_guarded(
         return await evaluate_symbol(symbol, ccxt_client, binance_client, cg_client)
 
 
-async def run_screener() -> list[ScreenerResult]:
+async def run_screener(limit: int | None = None) -> list[ScreenerResult]:
     """Полный прогон скринера по юниверсу.
 
     Шаги: получить юниверс → параллельно оценить каждую пару (с лимитом параллелизма)
     → отфильтровать по gate и score → вернуть топ-N отсортированных по score.
+
+    limit — ограничить оценку топ-N пар по объёму (smoke/dev); None = весь юниверс.
     """
     symbols = await get_liquid_perp_pairs()
+    if limit is not None:
+        symbols = symbols[:limit]
     logger.info("Screener: evaluating %d symbols", len(symbols))
 
     semaphore = asyncio.Semaphore(settings.SCREENER_CONCURRENCY)
@@ -52,6 +56,8 @@ async def run_screener() -> list[ScreenerResult]:
         if isinstance(r, CoinGlassAuthError):
             raise r
         if isinstance(r, BaseException):
+            if not isinstance(r, Exception):
+                raise r
             logger.error("Screener: unhandled error for %s: %s", symbol, r)
             continue
         results.append(r)

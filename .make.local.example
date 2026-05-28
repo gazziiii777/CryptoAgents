@@ -1,0 +1,9 @@
+# Локальный override для Makefile — НЕ коммитится (см. .gitignore).
+# Скопируй в `.make.local` и заполни значения:
+#   cp .make.local.example .make.local
+#
+# Используется deploy-таргетами (make deploy / make deploy.migrate / etc).
+
+SERVER_HOST = 1.2.3.4
+SERVER_USER = root
+SERVER_DIR  = /opt/trading-agents

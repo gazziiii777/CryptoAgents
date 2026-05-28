@@ -1,0 +1,8 @@
+REASON_LOW_CONFLUENCE = "low_confluence"
+REASON_NEUTRAL = "neutral_bias"
+REASON_NO_SETUP = "no_valid_setup"
+REASON_LEVEL_FAILED = "level_computation_failed"
+REASON_RISK_PREFIX = "risk_rejected: "
+REASON_SIGNAL_READY = "signal_ready"
+REASON_TRADING_HALTED = "trading_halted"
+REASON_DEVILS_VETO = "devils_advocate_veto"

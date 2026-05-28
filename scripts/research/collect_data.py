@@ -4,12 +4,10 @@
 Использование:
     python scripts/research/collect_data.py [--symbols N] [--days N] [--refresh]
 
-Выходные файлы: scripts/scripts/research/data/<SYMBOL>.parquet (один файл на монету)
+Выходные файлы: scripts/research/data/<SYMBOL>.parquet (один файл на монету)
 Колонки: open, high, low, close, volume, funding_rate, open_interest,
          long_short_ratio, vol_delta
 """
-
-from __future__ import annotations
 
 import argparse
 import asyncio
@@ -24,9 +22,10 @@ _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 load_dotenv(_ROOT / ".env")
 
-from core import settings  # noqa: E402
-from app.clients.binance_client import BinanceClient  # noqa: E402
-from app.clients.ccxt_client import CcxtClient, make_exchange  # noqa: E402
+from core.settings import settings  # noqa: E402
+from app.clients.binance.client import BinanceClient  # noqa: E402
+from app.clients.ccxt.client import CcxtClient  # noqa: E402
+from app.screener.universe import get_liquid_perp_pairs  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,28 +35,6 @@ logging.basicConfig(
 logger = logging.getLogger("collect_data")
 
 _DATA_DIR = _ROOT / "research" / "data"
-
-
-async def _build_universe(n: int, min_volume_usd: float) -> list[str]:
-    """Перп-USDT пары по суточному объёму: фильтр по min_volume_usd, топ-N по объёму."""
-    exchange = make_exchange()
-    try:
-        await exchange.load_markets()
-        tickers = await exchange.fetch_tickers()
-    finally:
-        await exchange.close()
-
-    perps = [
-        s
-        for s, m in exchange.markets.items()
-        if m.get("swap")
-        and m.get("quote") == "USDT"
-        and s in tickers
-        and float(tickers[s].get("quoteVolume") or 0) >= min_volume_usd
-    ]
-    return sorted(
-        perps, key=lambda s: float(tickers[s].get("quoteVolume") or 0), reverse=True
-    )[:n]
 
 
 def _out_path(symbol: str) -> Path:
@@ -152,7 +129,7 @@ async def main(symbols: int, days: int, refresh: bool, min_volume_usd: float) ->
         symbols,
         min_volume_usd / 1_000_000,
     )
-    universe = await _build_universe(symbols, min_volume_usd)
+    universe = (await get_liquid_perp_pairs(min_volume_usd=min_volume_usd))[:symbols]
     logger.info("%d symbols found", len(universe))
 
     sem = asyncio.Semaphore(5)

@@ -1,14 +1,11 @@
-from __future__ import annotations
-
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from core import settings
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,44 +13,17 @@ _engine: AsyncEngine | None = None
 _session_maker: async_sessionmaker[AsyncSession] | None = None
 
 
-def _apply_sqlite_pragma(dbapi_connection: object, _connection_record: object) -> None:
-    """Production-grade PRAGMA на каждый новый коннект SQLite.
-
-    WAL + synchronous=NORMAL — оптимальный durability/performance trade-off для
-    one-writer many-readers (scheduler пишет, watcher читает).
-    foreign_keys=ON — SQLite по умолчанию игнорирует FK, без этого FK-constraints
-    в моделях бесполезны. busy_timeout спасает от SQLITE_BUSY при гонке writer'ов.
-
-    Для aiosqlite dbapi_connection — это AsyncAdapt_aiosqlite_connection, но cursor
-    у него синхронный API; внутри он сам пробрасывает выполнение в aiosqlite-поток.
-    """
-    cursor = dbapi_connection.cursor()
-    try:
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA synchronous=NORMAL")
-        cursor.execute(f"PRAGMA busy_timeout={settings.DB_BUSY_TIMEOUT_MS}")
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.execute("PRAGMA cache_size=-64000")
-        cursor.execute("PRAGMA temp_store=MEMORY")
-    finally:
-        cursor.close()
-
-
-def _ensure_db_directory() -> None:
-    settings.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-
 def _init() -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
-    _ensure_db_directory()
     engine = create_async_engine(
         settings.DATABASE_URL,
         echo=False,
         future=True,
-        pool_pre_ping=True,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_recycle=settings.DB_POOL_RECYCLE_S,
     )
-    event.listen(engine.sync_engine, "connect", _apply_sqlite_pragma)
     maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    logger.info("DB engine initialised: %s", settings.DB_PATH)
+    logger.info("DB engine initialised")
     return engine, maker
 
 

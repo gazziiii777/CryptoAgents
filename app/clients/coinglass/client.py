@@ -1,17 +1,18 @@
-from __future__ import annotations
-
 import asyncio
 import logging
+from contextlib import suppress
 from enum import IntEnum
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
 from app.clients._shared.errors import log_api_error, log_key_status
 from app.clients._shared.rate_limiter import RateLimiter
+from app.clients.coinglass.exceptions import CoinGlassAPIError, CoinGlassAuthError
 from app.clients.coinglass.models import (
     AggregatedCVDPoint,
     AltcoinSeasonPoint,
+    FearGreedHistoryEntry,
     FearGreedPoint,
     FundingRateOHLC,
     FuturesBasisPoint,
@@ -25,7 +26,9 @@ from app.clients.coinglass.models import (
     TokenUnlockEntry,
     TopPositionRatio,
 )
-from core import settings
+from core.settings import settings
+from core.constants.http import AUTH_STATUS_CODES, RATE_LIMIT_STATUS
+from core.constants.time import MS_PER_SECOND
 from core.symbols import base_currency, to_exchange_pair
 
 logger = logging.getLogger(__name__)
@@ -37,19 +40,33 @@ _AGG_EXCHANGE_LIST = "Binance,OKX,Bybit"
 _RATE_LIMIT_PAUSE_S = 120
 _MAX_CONCURRENT = 2
 
+_RESP_CODE_KEY = "code"
+_RESP_OK_CODE = "0"
+_RESP_MSG_KEY = "msg"
+_RESP_MSG_DEFAULT = "unknown"
+_RESP_DATA_KEY = "data"
+_RATE_LIMIT_MSG = "Too Many Requests"
+
+_MAX_RETRIES = 3
+_UNIT_USD = "usd"
+_UNLOCK_LIST_PAGE_SIZE = 100
+_FIRST_PAGE = 1
+
 
 class CoinGlassPlanRate(IntEnum):
     """Безопасный rate-limit (req/min) по тарифу CoinGlass.
 
     Значения — реальный лимит тарифа минус ~7% запаса, чтобы leaky-bucket
     лимитер не упирался в 429 на bursts. Активный тариф определяется флагами
-    COINGLASS_*_PLAN в settings.
+    COINGLASS_*_PLAN в settings. Соответствие тариф → реальный лимит (цена/мес):
+    HOBBYIST 30 req/min ($29-35), STARTUP 80 ($79-95),
+    STANDARD 300 ($299-379), PROFESSIONAL 1200 ($699-879).
     """
 
-    HOBBYIST = 28  # real 30 req/min  ($29-35/mo)
-    STARTUP = 76  # real 80 req/min  ($79-95/mo)
-    STANDARD = 285  # real 300 req/min ($299-379/mo)
-    PROFESSIONAL = 1140  # real 1200 req/min ($699-879/mo)
+    HOBBYIST = 28
+    STARTUP = 76
+    STANDARD = 285
+    PROFESSIONAL = 1140
 
 
 def _resolve_rate_per_minute() -> int:
@@ -68,10 +85,6 @@ def _resolve_rate_per_minute() -> int:
 
 
 _CG_RATE_PER_MINUTE = _resolve_rate_per_minute()
-
-
-class CoinGlassAuthError(RuntimeError):
-    """API key is missing, invalid, or has insufficient permissions."""
 
 
 class CoinGlassClient:
@@ -104,9 +117,11 @@ class CoinGlassClient:
     async def close(self) -> None:
         if self._reopen_task and not self._reopen_task.done():
             self._reopen_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._reopen_task
         await self._http.aclose()
 
-    async def __aenter__(self) -> CoinGlassClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -115,32 +130,32 @@ class CoinGlassClient:
     async def _request(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         """HTTP GET: семафор → gate (пауза при rate limit) → leaky bucket → запрос."""
         async with self._sem:
-            for attempt in range(3):
+            for attempt in range(_MAX_RETRIES):
                 await self._gate.wait()
                 await self._rate_limiter.acquire()
                 await self._gate.wait()
 
                 resp = await self._http.get(path, params=params)
-                if resp.status_code == 429:
-                    msg = "Too Many Requests"
+                if resp.status_code == RATE_LIMIT_STATUS:
+                    msg = _RATE_LIMIT_MSG
                 else:
                     try:
                         resp.raise_for_status()
                     except httpx.HTTPStatusError as exc:
                         log_api_error(_SERVICE, exc, path=path)
-                        if exc.response.status_code in (401, 403):
+                        if exc.response.status_code in AUTH_STATUS_CODES:
                             raise CoinGlassAuthError(
                                 f"CoinGlass API key invalid or expired "
                                 f"(HTTP {exc.response.status_code}) — check COINGLASS_API_KEY"
                             ) from exc
                         raise
                     body: dict[str, Any] = resp.json()
-                    if body.get("code") == "0":
+                    if body.get(_RESP_CODE_KEY) == _RESP_OK_CODE:
                         return body
-                    msg = body.get("msg", "unknown")
+                    msg = body.get(_RESP_MSG_KEY, _RESP_MSG_DEFAULT)
 
-                if "Too Many Requests" in msg:
-                    if attempt < 2:
+                if _RATE_LIMIT_MSG in msg:
+                    if attempt < _MAX_RETRIES - 1:
                         if self._gate.is_set():
                             self._gate.clear()
                             logger.warning(
@@ -162,13 +177,13 @@ class CoinGlassClient:
                     raise RuntimeError(
                         f"CoinGlass rate limited after {attempt} retries: {path}"
                     )
-                raise RuntimeError(f"CoinGlass API error on {path}: {msg}")
+                raise CoinGlassAPIError(f"CoinGlass API error on {path}: {msg}")
             raise RuntimeError(f"CoinGlass API error on {path}: exhausted all retries")
 
     async def _get(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         """Для эндпоинтов где data — список объектов."""
         body = await self._request(path, params)
-        data = body["data"]
+        data = body[_RESP_DATA_KEY]
         if not isinstance(data, list):
             raise RuntimeError(
                 f"CoinGlass {path}: expected list in 'data', got {type(data).__name__}"
@@ -178,7 +193,7 @@ class CoinGlassClient:
     async def _get_obj(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         """Для эндпоинтов где data — dict, а не список."""
         body = await self._request(path, params)
-        data = body["data"]
+        data = body[_RESP_DATA_KEY]
         if not isinstance(data, dict):
             raise RuntimeError(
                 f"CoinGlass {path}: expected dict in 'data', got {type(data).__name__}"
@@ -198,19 +213,10 @@ class CoinGlassClient:
                 "symbol": base_currency(symbol),
                 "interval": interval,
                 "limit": limit,
-                "unit": "usd",
+                "unit": _UNIT_USD,
             },
         )
-        return [
-            OIAggregatedCandle(
-                timestamp=int(item["time"]),
-                open=float(item["open"]),
-                high=float(item["high"]),
-                low=float(item["low"]),
-                close=float(item["close"]),
-            )
-            for item in data
-        ]
+        return [OIAggregatedCandle.model_validate(item) for item in data]
 
     async def fetch_aggregated_cvd_history(
         self, symbol: str, interval: str = "4h", limit: int = settings.CVD_CANDLES
@@ -233,18 +239,10 @@ class CoinGlassClient:
                 "symbol": base_currency(symbol),
                 "interval": interval,
                 "limit": limit,
-                "unit": "usd",
+                "unit": _UNIT_USD,
             },
         )
-        return [
-            AggregatedCVDPoint(
-                timestamp=int(item["time"]),
-                agg_taker_buy_vol=float(item["agg_taker_buy_vol"]),
-                agg_taker_sell_vol=float(item["agg_taker_sell_vol"]),
-                cvd_delta=float(item["cum_vol_delta"]),
-            )
-            for item in data
-        ]
+        return [AggregatedCVDPoint.model_validate(item) for item in data]
 
     async def fetch_top_position_ratio(
         self,
@@ -267,15 +265,7 @@ class CoinGlassClient:
                 "limit": limit,
             },
         )
-        return [
-            TopPositionRatio(
-                timestamp=int(item["time"]),
-                long_percent=float(item["top_position_long_percent"]),
-                short_percent=float(item["top_position_short_percent"]),
-                long_short_ratio=float(item["top_position_long_short_ratio"]),
-            )
-            for item in data
-        ]
+        return [TopPositionRatio.model_validate(item) for item in data]
 
     async def fetch_funding_rate_oi_weight_history(
         self, symbol: str, interval: str = "4h", limit: int = settings.OI_HISTORY_LIMIT
@@ -289,16 +279,7 @@ class CoinGlassClient:
             "/api/futures/funding-rate/oi-weight-history",
             {"symbol": base_currency(symbol), "interval": interval, "limit": limit},
         )
-        return [
-            FundingRateOHLC(
-                timestamp=int(item["time"]),
-                open=float(item["open"]),
-                high=float(item["high"]),
-                low=float(item["low"]),
-                close=float(item["close"]),
-            )
-            for item in data
-        ]
+        return [FundingRateOHLC.model_validate(item) for item in data]
 
     async def fetch_futures_basis_history(
         self,
@@ -322,16 +303,7 @@ class CoinGlassClient:
                 "limit": limit,
             },
         )
-        return [
-            FuturesBasisPoint(
-                timestamp=int(item["time"]),
-                open_basis=float(item["open_basis"]),
-                close_basis=float(item["close_basis"]),
-                open_change=float(item["open_change"]),
-                close_change=float(item["close_change"]),
-            )
-            for item in data
-        ]
+        return [FuturesBasisPoint.model_validate(item) for item in data]
 
     async def fetch_net_position_history(
         self,
@@ -361,15 +333,7 @@ class CoinGlassClient:
                 "limit": limit,
             },
         )
-        return [
-            NetPositionPoint(
-                timestamp=int(item["time"]),
-                net_long_change=float(item["net_long_change"]),
-                net_short_change=float(item["net_short_change"]),
-                net_position_change_cum=float(item["net_position_change_cum"]),
-            )
-            for item in data
-        ]
+        return [NetPositionPoint.model_validate(item) for item in data]
 
     async def fetch_liquidation_heatmap(
         self, symbol: str, exchange: str = "Binance", range_: str = "3d"
@@ -390,10 +354,7 @@ class CoinGlassClient:
             "/api/futures/liquidation/heatmap/model1",
             {"exchange": exchange, "symbol": to_exchange_pair(symbol), "range": range_},
         )
-        return LiquidationHeatmapData(
-            y_axis=[float(p) for p in raw["y_axis"]],
-            liquidation_leverage_data=raw["liquidation_leverage_data"],
-        )
+        return LiquidationHeatmapData.model_validate(raw)
 
     async def fetch_liquidation_max_pain(
         self, range_: str = "24h"
@@ -411,17 +372,7 @@ class CoinGlassClient:
             return []
 
         data = await self._get("/api/futures/liquidation/max-pain", {"range": range_})
-        return [
-            MaxPainEntry(
-                symbol=item["symbol"],
-                price=float(item["price"]),
-                long_max_pain_price=float(item["long_max_pain_liq_price"]),
-                long_max_pain_level=float(item["long_max_pain_liq_level"]),
-                short_max_pain_price=float(item["short_max_pain_liq_price"]),
-                short_max_pain_level=float(item["short_max_pain_liq_level"]),
-            )
-            for item in data
-        ]
+        return [MaxPainEntry.model_validate(item) for item in data]
 
     async def fetch_large_orderbook(
         self, symbol: str, exchange: str = "Binance"
@@ -442,16 +393,7 @@ class CoinGlassClient:
             "/api/spot/orderbook/large-limit-order",
             {"exchange": exchange, "symbol": to_exchange_pair(symbol)},
         )
-        return [
-            LargeOrderEntry(
-                price=float(item["price"]),
-                current_usd_value=float(item["current_usd_value"]),
-                start_time=int(item["start_time"]),
-                order_side=int(item["order_side"]),
-                order_state=int(item["order_state"]),
-            )
-            for item in data
-        ]
+        return [LargeOrderEntry.model_validate(item) for item in data]
 
     async def fetch_fear_greed_history(self) -> list[FearGreedPoint]:
         """Исторический индекс страха/жадности (Fear & Greed).
@@ -459,15 +401,13 @@ class CoinGlassClient:
         Макро-эндпоинт: один вызов за прогон, параметров нет. Обновляется раз в сутки.
         Ответ — параллельные массивы time_list/data_list/price_list в одном объекте.
         """
-        data = await self._get("/api/index/fear-greed-history", {})
+        data = await self._get_obj("/api/index/fear-greed-history", {})
         if not data:
             return []
-        entry = data[0]
+        entry = FearGreedHistoryEntry.model_validate(data)
         return [
-            FearGreedPoint(timestamp=int(ts) * 1000, value=float(v), price=float(p))
-            for ts, v, p in zip(
-                entry["time_list"], entry["data_list"], entry["price_list"]
-            )
+            FearGreedPoint(timestamp=ts * MS_PER_SECOND, value=v, price=p)
+            for ts, v, p in zip(entry.time_list, entry.data_list, entry.price_list)
         ]
 
     async def fetch_altcoin_season(self) -> list[AltcoinSeasonPoint]:
@@ -484,13 +424,7 @@ class CoinGlassClient:
             return []
 
         data = await self._get("/api/index/altcoin-season", {})
-        return [
-            AltcoinSeasonPoint(
-                timestamp=int(item["timestamp"]),
-                altcoin_index=int(item["altcoin_index"]),
-            )
-            for item in data
-        ]
+        return [AltcoinSeasonPoint.model_validate(item) for item in data]
 
     async def fetch_futures_spot_volume_ratio(
         self, symbol: str, interval: str = "4h", limit: int = settings.OI_HISTORY_LIMIT
@@ -515,18 +449,10 @@ class CoinGlassClient:
                 "limit": limit,
             },
         )
-        return [
-            FuturesSpotRatioPoint(
-                timestamp=int(item["time"]),
-                futures_spot_vol_ratio=float(item["futures_spot_vol_ratio"]),
-                futures_vol_usd=float(item["futures_vol_usd"]),
-                spot_vol_usd=float(item["spot_vol_usd"]),
-            )
-            for item in data
-        ]
+        return [FuturesSpotRatioPoint.model_validate(item) for item in data]
 
     async def fetch_token_unlock_list(
-        self, per_page: int = 100, page: int = 1
+        self, per_page: int = _UNLOCK_LIST_PAGE_SIZE, page: int = _FIRST_PAGE
     ) -> list[TokenUnlockEntry]:
         """Расписание разблокировок токенов (Startup+).
 
@@ -543,15 +469,7 @@ class CoinGlassClient:
         data = await self._get(
             "/api/coin/unlock-list", {"per_page": per_page, "page": page}
         )
-        return [
-            TokenUnlockEntry(
-                symbol=item["symbol"],
-                next_unlock_date=int(item["next_unlock_date"]),
-                next_unlock_tokens=float(item["next_unlock_tokens"]),
-                next_unlock_of_circulating=float(item["next_unlock_of_circulating"]),
-            )
-            for item in data
-        ]
+        return [TokenUnlockEntry.model_validate(item) for item in data]
 
     async def fetch_liquidation_aggregated_history(
         self, symbol: str, interval: str = "4h", limit: int = settings.OI_HISTORY_LIMIT
@@ -570,14 +488,7 @@ class CoinGlassClient:
                 "limit": limit,
             },
         )
-        return [
-            LiquidationHistoryPoint(
-                timestamp=int(item["time"]),
-                long_liquidation_usd=float(item["aggregated_long_liquidation_usd"]),
-                short_liquidation_usd=float(item["aggregated_short_liquidation_usd"]),
-            )
-            for item in data
-        ]
+        return [LiquidationHistoryPoint.model_validate(item) for item in data]
 
     async def fetch_futures_large_orderbook(
         self, symbol: str, exchange: str = "Binance"
@@ -598,13 +509,4 @@ class CoinGlassClient:
             "/api/futures/orderbook/large-limit-order",
             {"exchange": exchange, "symbol": to_exchange_pair(symbol)},
         )
-        return [
-            LargeOrderEntry(
-                price=float(item["price"]),
-                current_usd_value=float(item["current_usd_value"]),
-                start_time=int(item["start_time"]),
-                order_side=int(item["order_side"]),
-                order_state=int(item["order_state"]),
-            )
-            for item in data
-        ]
+        return [LargeOrderEntry.model_validate(item) for item in data]

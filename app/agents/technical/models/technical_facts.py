@@ -1,0 +1,16 @@
+from pydantic import BaseModel, ConfigDict
+
+
+class TechnicalFacts(BaseModel):
+    """Детерминированные технические уровни/факты для LLM-интерпретации."""
+
+    model_config = ConfigDict(frozen=True)
+
+    current_price: float
+    atr: float
+    ema_20: float
+    ema_50: float
+    recent_high: float
+    recent_low: float
+    prev_day_high: float
+    prev_day_low: float

@@ -1,0 +1,14 @@
+nodes:
+  - build
+  - validate
+
+edges:
+  - from: __start__
+    to: build
+  - from: build
+    to: validate
+  - from: validate
+    condition: route_after_validate
+    path_map:
+      retry: build
+      end: __end__

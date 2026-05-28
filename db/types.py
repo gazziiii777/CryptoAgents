@@ -1,45 +1,58 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import DateTime, Dialect, Text, TypeDecorator
+from sqlalchemy import DateTime, Dialect, Numeric, String, TypeDecorator
+from sqlalchemy.types import TypeEngine
+
+_NUMERIC_PRECISION = 28
+_NUMERIC_SCALE = 10
+_TEXT_LENGTH = 64
 
 
 class DecimalText(TypeDecorator[Decimal]):
-    """Decimal stored as TEXT — preserves exact precision across SQLite and Postgres.
+    """Decimal с точным хранением: TEXT на SQLite, NUMERIC на MariaDB/Postgres.
 
-    Float storage would lose precision on round-trip and is forbidden for monetary
-    fields. TEXT is the portable choice; on Postgres migration this can switch to
-    NUMERIC via a single TypeDecorator edit without touching call sites.
+    SQLite не имеет нативного Decimal — его NUMERIC проходит через float и теряет
+    точность, поэтому на нём храним строкой (`format(value, "f")`) и читаем обратно
+    в Decimal без потерь. На MariaDB/Postgres — нативный `NUMERIC(28,10)`.
+    На уровне Python всегда Decimal in/out. Float для денег запрещён.
     """
 
-    impl = Text
+    impl = Numeric
     cache_ok = True
+
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "sqlite":
+            return dialect.type_descriptor(String(_TEXT_LENGTH))
+        return dialect.type_descriptor(
+            Numeric(precision=_NUMERIC_PRECISION, scale=_NUMERIC_SCALE, asdecimal=True)
+        )
 
     def process_bind_param(
         self, value: Decimal | int | str | None, dialect: Dialect
-    ) -> str | None:
+    ) -> Decimal | str | None:
         if value is None:
             return None
-        if not isinstance(value, Decimal):
-            value = Decimal(str(value))
-        return format(value, "f")
+        decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        if dialect.name == "sqlite":
+            return format(decimal_value, "f")
+        return decimal_value
 
-    def process_result_value(
-        self, value: str | None, dialect: Dialect
-    ) -> Decimal | None:
+    def process_result_value(self, value: object, dialect: Dialect) -> Decimal | None:
         if value is None:
             return None
-        return Decimal(value)
+        if isinstance(value, Decimal):
+            return value
+        return Decimal(str(value))
 
 
 class UTCDateTime(TypeDecorator[datetime]):
     """Datetime that rejects naive values and always normalises to UTC.
 
-    SQLite drops tz info on storage, so on read we re-attach UTC. Naive datetimes
-    are rejected at bind time — they're almost always a bug in this codebase
-    (mixing local time and UTC silently corrupts time-series joins).
+    Драйвер возвращает naive datetime (MariaDB DATETIME tz-неосведомлён); на чтении
+    приклеиваем UTC. Naive datetime на запись отвергаем — это почти всегда баг
+    смешения локального времени и UTC, корруптящий time-series.
     """
 
     impl = DateTime

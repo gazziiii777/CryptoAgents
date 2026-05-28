@@ -19,7 +19,8 @@ class Signal(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     ts: datetime = Field(
-        default_factory=utcnow, sa_column=Column(UTCDateTime, nullable=False, index=True)
+        default_factory=utcnow,
+        sa_column=Column(UTCDateTime, nullable=False, index=True),
     )
     bar_close_ts: datetime = Field(sa_column=Column(UTCDateTime, nullable=False))
 
@@ -39,4 +40,4 @@ class Signal(SQLModel, table=True):
 
     decision: Decision = Field(default=Decision.NO_TRADE)
     decision_reason: str | None = Field(default=None, max_length=256)
-    strategy_version: str = Field(default="1.0.0", max_length=32)
+    strategy_version: str = Field(default="1.3.0", max_length=32)

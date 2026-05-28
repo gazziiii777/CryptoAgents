@@ -1,9 +1,4 @@
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict
 
 from app.clients.lunarcrush.models import (
     CoinTimeSeriesPoint,
@@ -11,64 +6,37 @@ from app.clients.lunarcrush.models import (
     LunarCrushNewsItem,
     LunarCrushPost,
     WhatsupSummary,
-    WhatsupTheme,
 )
-from core import settings
+from app.models.enricher import (
+    AttentionLevel,
+    CatalystPolarity,
+    MomentumDirection,
+    PumpRisk,
+    ScreenerAlignment,
+    SentimentDirection,
+    SocialInsight,
+)
+from app.models.screener import Direction
+from core.settings import settings
 
-_FROZEN = ConfigDict(frozen=True, extra="ignore")
 
-AttentionLevel = Literal["silent", "normal", "spike"]
-SentimentDirection = Literal["bullish", "bearish", "mixed", "unknown"]
-ScreenerAlignment = Literal["confirms", "contradicts", "neutral", "no_data"]
-CatalystPolarity = Literal["positive", "negative", "neutral"]
-MomentumDirection = Literal["improving", "deteriorating", "flat", "unknown"]
+def classify_pump_risk(
+    attention_level: AttentionLevel,
+    influencer_mentions: int,
+    news_count: int,
+    influencer_min: int,
+) -> PumpRisk:
+    """Риск скоординированного пампа по соц-фону.
 
-
-class SocialInsight(BaseModel):
-    """Готовые ответы про настроение, momentum и катализаторы по кандидату.
-
-    Детерминированная свёртка LunarCrush метрик + AI-narrative + новостей +
-    топ-постов в структурированный сигнал. Используется и как gate
-    (contrarian overheat, противоречие скринеру), и как структурированный
-    вход для downstream LLM-агентов.
+    'high' — всплеск внимания (spike) + ≥ influencer_min инфлюенсеров + НОЛЬ свежих
+    новостей: ажиотаж без фундамента, вероятен организованный памп → сигнал фейдить,
+    не гнаться. 'moderate' — spike, но есть новости или мало инфлюенсеров. Иначе 'none'.
     """
-
-    model_config = _FROZEN
-
-    attention_level: AttentionLevel
-    attention_ratio: float | None
-    attention_baseline: float | None
-    social_volume_24h: int | None
-    interactions_24h: int | None
-
-    galaxy_score: float | None
-    galaxy_score_delta: float | None
-    alt_rank: int | None
-    alt_rank_delta: int | None
-    momentum: MomentumDirection
-
-    sentiment_pct: float | None
-    sentiment_direction: SentimentDirection
-    contrarian_warning: bool
-
-    screener_alignment: ScreenerAlignment
-
-    fresh_catalyst: LunarCrushNewsItem | None
-    catalyst_polarity: CatalystPolarity | None
-    important_news_count_24h: int
-    top_news: list[LunarCrushNewsItem]
-
-    narrative_summary: str | None
-    supportive_themes: list[WhatsupTheme]
-    critical_themes: list[WhatsupTheme]
-
-    influencer_mentions: int
-    top_posts: list[LunarCrushPost]
-
-    categories: list[str]
-
-    sources_used: list[str]
-    is_partial: bool
+    if attention_level != "spike":
+        return "none"
+    if influencer_mentions >= influencer_min and news_count == 0:
+        return "high"
+    return "moderate"
 
 
 def derive_social_insight(
@@ -78,7 +46,7 @@ def derive_social_insight(
     posts: list[LunarCrushPost],
     whatsup: WhatsupSummary | None,
     time_series: list[CoinTimeSeriesPoint],
-    screener_direction: str,
+    screener_direction: Direction,
     now: datetime | None = None,
 ) -> SocialInsight:
     """Свернуть все LunarCrush-данные + scrap данные в SocialInsight."""
@@ -163,6 +131,12 @@ def derive_social_insight(
         influencer_mentions=influencer_mentions,
         top_posts=top_posts,
         categories=lc.categories if lc else [],
+        pump_risk=classify_pump_risk(
+            attention_level,
+            influencer_mentions,
+            len(fresh_news),
+            settings.PUMP_INFLUENCER_MIN,
+        ),
         sources_used=sources,
         is_partial=lc is None,
     )
@@ -225,7 +199,7 @@ def _contrarian_warning(sentiment_pct: float | None) -> bool:
 
 
 def _screener_alignment(
-    sentiment_pct: float | None, screener_direction: str
+    sentiment_pct: float | None, screener_direction: Direction
 ) -> ScreenerAlignment:
     if sentiment_pct is None or screener_direction == "mixed":
         return "no_data" if sentiment_pct is None else "neutral"

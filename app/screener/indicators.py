@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 
 import numpy as np
@@ -9,16 +7,57 @@ import ta
 from app.clients.binance.models import CVDPoint, OISnapshot
 from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
 from app.clients.coinglass.models import FundingRateOHLC, LiquidationHistoryPoint
-from core import settings
+from app.models.screener import (
+    CvdPriceDivergence,
+    CvdTrend,
+    DailyTrend,
+    EmaCross,
+    FundingBias,
+    MacdSignal,
+    OiTrend,
+    RsiDivergence,
+    VwapBias,
+)
+from core.settings import settings
 
 logger = logging.getLogger(__name__)
+
+_LOCAL_EXTREMUM_RADIUS = 2
+_MIN_PERIOD_MULTIPLIER = 3
+
+_ADX_PERIOD = 14
+_ATR_PERIOD = 14
+_RSI_PERIOD = 14
+_RSI_DIVERGENCE_LOOKBACK = 20
+
+_MACD_FAST = 12
+_MACD_SLOW = 26
+_MACD_SIGNAL = 9
+
+_VOLUME_SMA_PERIOD = 20
+_BB_WINDOW = 20
+_BB_STD_DEV = 2.0
+
+_EMA_FAST = 20
+_EMA_SLOW = 50
+
+_VWAP_MIN_INTRADAY_CANDLES = 3
+_VWAP_FALLBACK_CANDLES = 12
+
+_NEAR_SWING_DEFAULT_WINDOW = 20
+_OI_TREND_LOOKBACK = 8
+
+_CVD_TREND_MIN_POINTS = 4
+_CVD_TREND_WINDOW_DIVISOR = 3
 
 
 def _to_df(candles: list[OHLCVCandle]) -> pd.DataFrame:
     return pd.DataFrame([c.model_dump() for c in candles]).set_index("timestamp")
 
 
-def _local_minima(values: list[float], radius: int = 2) -> list[tuple[int, float]]:
+def _local_minima(
+    values: list[float], radius: int = _LOCAL_EXTREMUM_RADIUS
+) -> list[tuple[int, float]]:
     """Индексы и значения локальных минимумов: точка меньше radius соседей с каждой стороны."""
     result = []
     for i in range(radius, len(values) - radius):
@@ -28,7 +67,9 @@ def _local_minima(values: list[float], radius: int = 2) -> list[tuple[int, float
     return result
 
 
-def _local_maxima(values: list[float], radius: int = 2) -> list[tuple[int, float]]:
+def _local_maxima(
+    values: list[float], radius: int = _LOCAL_EXTREMUM_RADIUS
+) -> list[tuple[int, float]]:
     """Индексы и значения локальных максимумов: точка больше radius соседей с каждой стороны."""
     result = []
     for i in range(radius, len(values) - radius):
@@ -38,10 +79,11 @@ def _local_maxima(values: list[float], radius: int = 2) -> list[tuple[int, float
     return result
 
 
-def calc_adx(candles: list[OHLCVCandle], period: int = 14) -> float:
+def calc_adx(candles: list[OHLCVCandle], period: int = _ADX_PERIOD) -> float:
     """ADX последней свечи. Минимум period*3 свечей для надёжности, иначе 0.0."""
-    if len(candles) < period * 3:
-        logger.warning("ADX: insufficient candles (%d < %d)", len(candles), period * 3)
+    min_candles = period * _MIN_PERIOD_MULTIPLIER
+    if len(candles) < min_candles:
+        logger.warning("ADX: insufficient candles (%d < %d)", len(candles), min_candles)
         return 0.0
 
     df = _to_df(candles)
@@ -52,7 +94,7 @@ def calc_adx(candles: list[OHLCVCandle], period: int = 14) -> float:
     return float(value) if not np.isnan(value) else 0.0
 
 
-def calc_atr(candles: list[OHLCVCandle], period: int = 14) -> float:
+def calc_atr(candles: list[OHLCVCandle], period: int = _ATR_PERIOD) -> float:
     """ATR последней свечи для оценки волатильности и расчёта стопов. 0.0 при нехватке данных."""
     if len(candles) < period + 1:
         return 0.0
@@ -65,7 +107,9 @@ def calc_atr(candles: list[OHLCVCandle], period: int = 14) -> float:
     return float(value) if not np.isnan(value) else 0.0
 
 
-def calc_rsi_level(candles: list[OHLCVCandle], period: int = 14) -> float | None:
+def calc_rsi_level(
+    candles: list[OHLCVCandle], period: int = _RSI_PERIOD
+) -> float | None:
     """RSI последней свечи. None при нехватке данных."""
     if len(candles) < period + 1:
         return None
@@ -77,8 +121,10 @@ def calc_rsi_level(candles: list[OHLCVCandle], period: int = 14) -> float | None
 
 
 def calc_rsi_divergence(
-    candles: list[OHLCVCandle], rsi_period: int = 14, lookback: int = 20
-) -> str | None:
+    candles: list[OHLCVCandle],
+    rsi_period: int = _RSI_PERIOD,
+    lookback: int = _RSI_DIVERGENCE_LOOKBACK,
+) -> RsiDivergence | None:
     """RSI-дивергенция на последних lookback свечах через локальные экстремумы.
 
     Бычья: последний локальный low цены ниже предыдущего, RSI — выше.
@@ -115,13 +161,18 @@ def calc_rsi_divergence(
     return None
 
 
-def calc_macd(candles: list[OHLCVCandle]) -> str | None:
+def calc_macd(candles: list[OHLCVCandle]) -> MacdSignal | None:
     """MACD(12,26,9): 'bullish' — гистограмма > 0 и растёт; 'bearish' — < 0 и падает; None иначе."""
-    if len(candles) < 26 * 3:
+    if len(candles) < _MACD_SLOW * _MIN_PERIOD_MULTIPLIER:
         return None
 
     df = _to_df(candles)
-    macd_ind = ta.trend.MACD(df["close"], window_slow=26, window_fast=12, window_sign=9)
+    macd_ind = ta.trend.MACD(
+        df["close"],
+        window_slow=_MACD_SLOW,
+        window_fast=_MACD_FAST,
+        window_sign=_MACD_SIGNAL,
+    )
     hist = macd_ind.macd_diff()
 
     last = hist.iloc[-1]
@@ -138,18 +189,20 @@ def calc_macd(candles: list[OHLCVCandle]) -> str | None:
     return None
 
 
-def calc_volume_spike(candles: list[OHLCVCandle], sma_period: int = 20) -> bool:
+def calc_volume_spike(
+    candles: list[OHLCVCandle], sma_period: int = _VOLUME_SMA_PERIOD
+) -> bool:
     """True если volume_last > VOLUME_SPIKE_MULTIPLIER × SMA(sma_period)."""
     if len(candles) < sma_period + 1:
         return False
 
     volumes = [c.volume for c in candles]
     sma_vol = np.mean(volumes[-(sma_period + 1) : -1])
-    return volumes[-1] > settings.VOLUME_SPIKE_MULTIPLIER * sma_vol
+    return bool(volumes[-1] > settings.VOLUME_SPIKE_MULTIPLIER * sma_vol)
 
 
 def calc_bb_squeeze(
-    candles: list[OHLCVCandle], window: int = 20, std_dev: float = 2.0
+    candles: list[OHLCVCandle], window: int = _BB_WINDOW, std_dev: float = _BB_STD_DEV
 ) -> bool:
     """True если (BB_upper - BB_lower) / BB_mid < BB_SQUEEZE_THRESHOLD (ожидается пробой)."""
     if len(candles) < window + 1:
@@ -164,18 +217,19 @@ def calc_bb_squeeze(
     if np.isnan(upper) or np.isnan(lower) or mid == 0:
         return False
 
-    return (upper - lower) / mid < settings.BB_SQUEEZE_THRESHOLD
+    return bool((upper - lower) / mid < settings.BB_SQUEEZE_THRESHOLD)
 
 
 def calc_ema_cross(
-    candles: list[OHLCVCandle], fast: int = 20, slow: int = 50
-) -> str | None:
+    candles: list[OHLCVCandle], fast: int = _EMA_FAST, slow: int = _EMA_SLOW
+) -> EmaCross | None:
     """ "golden" — fast пересекла slow снизу вверх; "death" — сверху вниз; None — нет пересечения или мало данных."""
-    if len(candles) < slow * 3:
+    min_candles = slow * _MIN_PERIOD_MULTIPLIER
+    if len(candles) < min_candles:
         logger.warning(
             "EMA cross: only %d candles (need %d for reliable EMA%d), skipping",
             len(candles),
-            slow * 3,
+            min_candles,
             slow,
         )
         return None
@@ -198,7 +252,7 @@ def calc_ema_cross(
     return None
 
 
-def calc_vwap_bias(candles: list[OHLCVCandle]) -> str:
+def calc_vwap_bias(candles: list[OHLCVCandle]) -> VwapBias:
     """Положение close относительно дневного VWAP (сброс в полночь UTC).
 
     Если сегодня менее 3 свечей — fallback на последние 12 (48h).
@@ -209,8 +263,8 @@ def calc_vwap_bias(candles: list[OHLCVCandle]) -> str:
     today_midnight = dt_index[-1].normalize()
     day_df = df[dt_index >= today_midnight]
 
-    if len(day_df) < 3:
-        day_df = df.iloc[-12:]
+    if len(day_df) < _VWAP_MIN_INTRADAY_CANDLES:
+        day_df = df.iloc[-_VWAP_FALLBACK_CANDLES:]
 
     typical_price = (day_df["high"] + day_df["low"] + day_df["close"]) / 3
     cumulative_tp_vol = (typical_price * day_df["volume"]).cumsum()
@@ -220,10 +274,18 @@ def calc_vwap_bias(candles: list[OHLCVCandle]) -> str:
     last_close = float(day_df["close"].iloc[-1])
     last_vwap = float(vwap.iloc[-1])
 
+    if np.isnan(last_vwap):
+        logger.warning(
+            "VWAP: zero cumulative volume in window, defaulting bias to below"
+        )
+        return "below"
+
     return "above" if last_close > last_vwap else "below"
 
 
-def calc_near_swing(candles: list[OHLCVCandle], window: int = 20) -> bool:
+def calc_near_swing(
+    candles: list[OHLCVCandle], window: int = _NEAR_SWING_DEFAULT_WINDOW
+) -> bool:
     """True если close в пределах NEAR_SWING_ATR_MULT × ATR от swing high/low последних window свечей.
 
     Порог масштабируется с волатильностью монеты. Для значимых уровней передавать 1D свечи с window=50.
@@ -251,8 +313,8 @@ def calc_near_swing(candles: list[OHLCVCandle], window: int = 20) -> bool:
 
 
 def calc_daily_trend(
-    candles_1d: list[OHLCVCandle], fast: int = 20, slow: int = 50
-) -> str:
+    candles_1d: list[OHLCVCandle], fast: int = _EMA_FAST, slow: int = _EMA_SLOW
+) -> DailyTrend:
     """Направление дневного тренда по EMA(fast) vs EMA(slow): 'up', 'down' или 'neutral'."""
     if len(candles_1d) < slow + 1:
         return "neutral"
@@ -274,7 +336,9 @@ def calc_daily_trend(
     return "neutral"
 
 
-def calc_oi_trend(oi_history: list[OISnapshot], lookback: int = 8) -> str:
+def calc_oi_trend(
+    oi_history: list[OISnapshot], lookback: int = _OI_TREND_LOOKBACK
+) -> OiTrend:
     """Тренд OI за последние lookback точек: 'growing', 'shrinking' или 'neutral'.
 
     Используется OI_CHANGE_4H_MIN_PCT как порог значимого изменения.
@@ -297,7 +361,7 @@ def calc_oi_trend(oi_history: list[OISnapshot], lookback: int = 8) -> str:
     return "neutral"
 
 
-def calc_funding_bias(funding_history: list[FundingRateHistoryEntry]) -> str:
+def calc_funding_bias(funding_history: list[FundingRateHistoryEntry]) -> FundingBias:
     """Средняя ставка финансирования за всю историю: 'long_heavy', 'short_heavy' или 'neutral'."""
     if not funding_history:
         return "neutral"
@@ -311,12 +375,12 @@ def calc_funding_bias(funding_history: list[FundingRateHistoryEntry]) -> str:
     return "neutral"
 
 
-def calc_cvd_trend(cvd_points: list[CVDPoint]) -> str:
+def calc_cvd_trend(cvd_points: list[CVDPoint]) -> CvdTrend:
     """Тренд CVD за последнюю треть окна: 'rising' (байеры), 'falling' (продавцы) или 'neutral'."""
-    if len(cvd_points) < 4:
+    if len(cvd_points) < _CVD_TREND_MIN_POINTS:
         return "neutral"
 
-    n = max(4, len(cvd_points) // 3)
+    n = max(_CVD_TREND_MIN_POINTS, len(cvd_points) // _CVD_TREND_WINDOW_DIVISOR)
     first_cvd = cvd_points[-n].cvd
     last_cvd = cvd_points[-1].cvd
 
@@ -329,14 +393,14 @@ def calc_cvd_trend(cvd_points: list[CVDPoint]) -> str:
 
 def calc_cvd_price_divergence(
     candles_4h: list[OHLCVCandle], cvd_points: list[CVDPoint]
-) -> str | None:
+) -> CvdPriceDivergence | None:
     """Дивергенция цены и CVD за окно CVD.
 
     'bullish' — цена вниз, CVD положительный (продавцы выдыхаются).
     'bearish' — цена вверх, CVD отрицательный (байеры не подтверждают рост).
     """
     n = len(cvd_points)
-    if n < 4 or len(candles_4h) < n:
+    if n < _CVD_TREND_MIN_POINTS or len(candles_4h) < n:
         return None
 
     price_first = candles_4h[-n].close
@@ -379,7 +443,7 @@ def calc_liquidation_spike(
     return last_total > multiplier * avg_total
 
 
-def calc_oi_weighted_funding_bias(funding_hist: list[FundingRateOHLC]) -> str:
+def calc_oi_weighted_funding_bias(funding_hist: list[FundingRateOHLC]) -> FundingBias:
     """Средняя OI-взвешенная ставка финансирования: 'long_heavy', 'short_heavy' или 'neutral'.
 
     Точнее calc_funding_bias: взвешивает все биржи по их OI, не только Binance.

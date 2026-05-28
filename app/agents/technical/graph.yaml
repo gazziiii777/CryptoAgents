@@ -1,0 +1,11 @@
+nodes:
+  - compute_levels
+  - interpret
+
+edges:
+  - from: __start__
+    to: compute_levels
+  - from: compute_levels
+    to: interpret
+  - from: interpret
+    to: __end__

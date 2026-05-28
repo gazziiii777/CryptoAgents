@@ -1,8 +1,0 @@
-{
-  "dependencies": ["."],
-  "graphs": {
-    "technical_analyst": "./app/agents/technical/agent.py:graph",
-    "setup_builder": "./app/agents/setup/agent.py:graph"
-  },
-  "env": ".env"
-}

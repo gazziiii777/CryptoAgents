@@ -1,14 +1,10 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 from datetime import datetime, timezone
 
 import httpx
-from pydantic import BaseModel
 
 from app.clients.coingecko.client import CoinGeckoClient
-from app.clients.coingecko.models import MacroSnapshot
 from app.clients.coinglass.client import CoinGlassClient
 from app.clients.lunarcrush.client import LunarCrushClient
 from app.clients.lunarcrush.models import (
@@ -18,39 +14,13 @@ from app.clients.lunarcrush.models import (
     LunarCrushPost,
     WhatsupSummary,
 )
+from app.enricher.insight import derive_social_insight
+from app.models.enricher import EnrichedCandidate, EnrichmentResult
+from app.models.screener import ScreenerResult
+from core.settings import settings
 from core.symbols import normalized_base
-from core import settings
-from app.enricher.insight import SocialInsight, derive_social_insight
-from app.screener.criteria import ScreenerResult
 
 logger = logging.getLogger(__name__)
-
-
-class EnrichedCandidate(BaseModel):
-    """Кандидат скринера + готовые социальные/новостные ответы.
-
-    Macro живёт отдельно на уровне pipeline (один MacroSnapshot на прогон),
-    в EnrichedCandidate не дублируется — режет контекст downstream LLM и
-    устраняет рассинхрон между кандидатами одного батча.
-
-    lc_context — LLM-оптимизированный markdown от lunarcrush.ai: engagements/
-    mentions по сетям, топ-инфлюенсеры, история sentiment/galaxy/altrank.
-    Передаётся напрямую в LLM-аналитиков без дополнительной обработки.
-    """
-
-    symbol: str
-    screener: ScreenerResult
-    social: SocialInsight
-    lc_context: str | None = None
-    enriched_at: datetime
-
-
-class EnrichmentResult(BaseModel):
-    """Полный результат прогона энричера: per-symbol-кандидаты + общий macro."""
-
-    candidates: list[EnrichedCandidate]
-    macro: MacroSnapshot
-    fear_greed: int | None = None
 
 
 class DataEnricher:
@@ -69,17 +39,18 @@ class DataEnricher:
       - time_series: baseline за неделю для корректного attention_level
     """
 
-    def __init__(self, coinglass: CoinGlassClient | None = None) -> None:
-        self._coinglass = coinglass
-
     async def enrich(self, candidates: list[ScreenerResult]) -> EnrichmentResult:
         """Один прогон: батч-coins/list + per-symbol whatsup/news/posts/ts."""
         symbols = [c.symbol for c in candidates]
 
-        async with CoinGeckoClient() as coingecko, LunarCrushClient() as lunarcrush:
+        async with (
+            CoinGeckoClient() as coingecko,
+            CoinGlassClient() as coinglass,
+            LunarCrushClient() as lunarcrush,
+        ):
             macro, fear_greed, lc_metrics = await asyncio.gather(
                 coingecko.fetch_macro_snapshot(),
-                self._fetch_fear_greed(),
+                self._fetch_fear_greed(coinglass),
                 lunarcrush.fetch_topic_metrics(symbols),
             )
             per_symbol = await asyncio.gather(
@@ -99,7 +70,11 @@ class DataEnricher:
                     candidate.symbol,
                     per_result,
                 )
-                whatsup, news, posts, time_series, lc_context = (None, [], [], [], None)
+                whatsup = None
+                news: list[LunarCrushNewsItem] = []
+                posts: list[LunarCrushPost] = []
+                time_series: list[CoinTimeSeriesPoint] = []
+                lc_context = None
             else:
                 whatsup, news, posts, time_series, lc_context = per_result
 
@@ -171,11 +146,9 @@ class DataEnricher:
         )
         return whatsup, news, posts, time_series, lc_context
 
-    async def _fetch_fear_greed(self) -> int | None:
-        if self._coinglass is None:
-            return None
+    async def _fetch_fear_greed(self, coinglass: CoinGlassClient) -> int | None:
         try:
-            history = await self._coinglass.fetch_fear_greed_history()
+            history = await coinglass.fetch_fear_greed_history()
         except (httpx.HTTPError, RuntimeError) as exc:
             logger.warning("Failed to fetch fear_greed: %s", exc)
             return None
