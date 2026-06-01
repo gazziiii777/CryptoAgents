@@ -23,6 +23,13 @@ _BAR_TS = datetime(2026, 1, 1, tzinfo=timezone.utc)
 _TS_COUNTER = itertools.count()
 
 
+@pytest.fixture(autouse=True)
+def _reset_ts_counter() -> None:
+    """Свежий счётчик на каждый тест — без переноса состояния между тестами."""
+    global _TS_COUNTER
+    _TS_COUNTER = itertools.count()
+
+
 def _unique_ts() -> datetime:
     return _BAR_TS + timedelta(seconds=next(_TS_COUNTER))
 

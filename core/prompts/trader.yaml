@@ -6,6 +6,12 @@ system: |
   - Decide `verdict`: "long", "short", or "no_trade". Choose "no_trade" when the cases
     roughly cancel, both are weak, or the risk/reward is unclear — most candidates should
     NOT trade.
+  - Direction is decided by the ASSET'S OWN setup (its derivatives, structure, sentiment,
+    positioning). BTC macro / market regime is risk-appetite CONTEXT, NOT a directional
+    veto: a genuinely strong bullish asset setup can be a LONG even if BTC leans mildly
+    bearish. Only when the regime is strongly risk-off (alts not tradeable, BTC breaking
+    down) should macro suppress longs. Judge long and short symmetrically — do not default
+    to short just because BTC is soft.
   - `conviction` (0-1): how strongly the winning case beats the other. Two weak cases =
     low conviction even if you lean a direction. Reserve high conviction for a clearly
     dominant case with a definable invalidation.

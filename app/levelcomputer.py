@@ -4,6 +4,13 @@ from collections.abc import Callable
 from app.clients.ccxt.models import OHLCVCandle
 from app.models.setup import CryptoSetup, SetupIntent
 from app.screener.indicators import calc_atr
+from core.constants.setup_kinds import (
+    KIND_ATR_DISTANCE,
+    KIND_PREV_DAY_HIGH,
+    KIND_PREV_DAY_LOW,
+    KIND_SWING_HIGH_4H,
+    KIND_SWING_LOW_4H,
+)
 from core.constants.time import FUNDING_CYCLE_HOURS
 
 logger = logging.getLogger(__name__)
@@ -12,7 +19,6 @@ _DEFAULT_SWING_LOOKBACK = 20
 _MIN_STOP_DISTANCE_PCT = 0.003
 _MAX_STOP_DISTANCE_PCT = 0.08
 _MAX_TARGET_DISTANCE_PCT = 0.20
-_KIND_ATR = "atr_distance"
 _DEFAULT_ATR_MULTIPLIER = 2.0
 _DEFAULT_TARGET_ATR_MULTIPLIER = 3.0
 _FALLBACK_TARGET_RR = 2.0
@@ -37,10 +43,10 @@ def _prev_day_low(candles_1d: list[OHLCVCandle]) -> float | None:
 _AnchorResolver = Callable[[list[OHLCVCandle], list[OHLCVCandle], int], float | None]
 
 _ANCHOR_RESOLVERS: dict[str, _AnchorResolver] = {
-    "swing_high_4h": lambda c4, _c1, lb: _swing_high(c4, lb),
-    "swing_low_4h": lambda c4, _c1, lb: _swing_low(c4, lb),
-    "prev_day_high": lambda _c4, c1, _lb: _prev_day_high(c1),
-    "prev_day_low": lambda _c4, c1, _lb: _prev_day_low(c1),
+    KIND_SWING_HIGH_4H: lambda c4, _c1, lb: _swing_high(c4, lb),
+    KIND_SWING_LOW_4H: lambda c4, _c1, lb: _swing_low(c4, lb),
+    KIND_PREV_DAY_HIGH: lambda _c4, c1, _lb: _prev_day_high(c1),
+    KIND_PREV_DAY_LOW: lambda _c4, c1, _lb: _prev_day_low(c1),
 }
 
 
@@ -85,7 +91,7 @@ def resolve_setup(
     is_long = intent.direction == "long"
     entry = current_price
 
-    if intent.stop.kind == _KIND_ATR:
+    if intent.stop.kind == KIND_ATR_DISTANCE:
         raw_distance = (intent.stop.atr_multiplier or _DEFAULT_ATR_MULTIPLIER) * atr
         distance = min(
             max(raw_distance, _MIN_STOP_DISTANCE_PCT * entry),
@@ -116,7 +122,7 @@ def resolve_setup(
         logger.info("setup rejected: bad entry/stop ordering (%s)", intent.direction)
         return None
 
-    if intent.target.kind == _KIND_ATR:
+    if intent.target.kind == KIND_ATR_DISTANCE:
         distance = (
             intent.target.atr_multiplier or _DEFAULT_TARGET_ATR_MULTIPLIER
         ) * atr

@@ -4,19 +4,21 @@ from typing import Self
 import ccxt.async_support as ccxt
 
 from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
+from core.constants.time import MS_PER_SECOND
 from core.settings import settings
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_MARKET_TYPE = "swap"
-_EXCHANGE_OPTIONS: dict[str, dict[str, str]] = {
-    "options": {"defaultType": _DEFAULT_MARKET_TYPE}
-}
+_HTTP_TIMEOUT_MS = int(settings.HTTP_TIMEOUT_S * MS_PER_SECOND)
 _DEFAULT_OHLCV_LIMIT = 100
 
 
 def make_exchange(exchange_id: str = settings.EXCHANGE_ID) -> ccxt.Exchange:
-    return getattr(ccxt, exchange_id)(_EXCHANGE_OPTIONS)
+    return getattr(ccxt, exchange_id)({
+        "options": {"defaultType": _DEFAULT_MARKET_TYPE},
+        "timeout": _HTTP_TIMEOUT_MS,
+    })
 
 
 class CcxtClient:
@@ -33,7 +35,7 @@ class CcxtClient:
         self._exchange = make_exchange(self._exchange_id)
         try:
             await self._exchange.load_markets()
-        except Exception as exc:
+        except ccxt.BaseError as exc:
             logger.error(
                 "CCXT load_markets failed for exchange %s: %s", self._exchange_id, exc
             )

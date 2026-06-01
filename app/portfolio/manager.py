@@ -10,7 +10,7 @@ from app.notifications.positions import notify_position_opened
 from app.portfolio.account_service import build_portfolio_state
 from app.portfolio.leverage import compute_leverage
 from app.portfolio.models import PortfolioState
-from app.portfolio.sizing import compute_qty, confidence_risk_pct
+from app.portfolio.sizing import compute_qty_by_margin, confidence_risk_pct
 from core.constants.entities import ENTITY_POSITION
 from core.settings import settings
 from db.models import Account, Decision, EventType, PositionSide, VirtualPosition
@@ -86,17 +86,17 @@ class PortfolioManager:
         entry = Decimal(str(final_signal.entry_price))
         stop = Decimal(str(final_signal.stop_price))
         target = Decimal(str(final_signal.target_price))
-        risk_pct = confidence_risk_pct(
-            final_signal.analyst_confluence,
-            settings.CONFLUENCE_GATE,
-            Decimal(str(settings.RISK_PER_TRADE_MIN_PCT)),
-            Decimal(str(settings.RISK_PER_TRADE_MAX_PCT)),
-        )
-        qty = compute_qty(account.equity, entry, stop, risk_pct)
-        notional = entry * qty
         leverage = compute_leverage(
             final_signal.setup_type, final_signal.leverage_intent, settings.MAX_LEVERAGE
         )
+        margin_pct = confidence_risk_pct(
+            final_signal.analyst_confluence,
+            settings.CONFLUENCE_GATE,
+            Decimal(str(settings.MARGIN_PER_TRADE_MIN_PCT)),
+            Decimal(str(settings.MARGIN_PER_TRADE_MAX_PCT)),
+        )
+        qty = compute_qty_by_margin(account.equity, entry, leverage, margin_pct)
+        notional = entry * qty
         margin = notional / Decimal(leverage)
         position = await self._positions.create(
             VirtualPosition(
@@ -129,7 +129,7 @@ class PortfolioManager:
                 "leverage": leverage,
                 "margin": str(margin),
                 "leverage_intent": final_signal.leverage_intent,
-                "risk_pct": str(risk_pct),
+                "margin_pct": str(margin_pct),
                 "confluence_score": final_signal.confluence_score,
             },
         )
@@ -141,7 +141,7 @@ class PortfolioManager:
                 "qty": str(qty),
                 "entry_price": str(entry),
                 "notional": str(notional),
-                "risk_pct": str(risk_pct),
+                "margin_pct": str(margin_pct),
             },
         )
         await notify_position_opened(position, final_signal.confluence_score)

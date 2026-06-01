@@ -29,7 +29,8 @@ def _reports_block(
 ) -> str:
     """Сводка четырёх отчётов + синтеза одним блоком для bull/bear-промптов."""
     return (
-        f"Macro: regime={macro.regime}, btc_bias={macro.btc_bias}, "
+        f"Market regime (risk-appetite CONTEXT, not a directional call on THIS asset): "
+        f"regime={macro.regime}, btc_bias={macro.btc_bias}, "
         f"alts_tradeable={macro.alts_tradeable}. {macro.reasoning}\n"
         f"Derivatives: bias={derivatives.overall_bias}, "
         f"funding={derivatives.funding_signal}, oi={derivatives.oi_signal}, "

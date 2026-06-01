@@ -1,6 +1,6 @@
 import pytest
 
-from app.aggregator import _WEIGHTS, aggregate_signals
+from app.aggregator import aggregate_signals
 from app.models.analysis import (
     DerivativesReport,
     MacroReport,
@@ -8,6 +8,8 @@ from app.models.analysis import (
     TechnicalReport,
 )
 from core.settings import settings
+
+_TECHNICAL_WEIGHT = 0.35
 
 
 def _macro(btc_bias: str = "Bullish", alts_tradeable: bool = True) -> MacroReport:
@@ -55,8 +57,10 @@ def _tech(signal_direction: str = "Long") -> TechnicalReport:
     )
 
 
-def test_full_agreement_bullish_high_confluence():
-    synth = aggregate_signals(_macro(), _deriv(), _senti(), _tech())
+def test_full_agreement_bullish_high_confluence() -> None:
+    synth = aggregate_signals(
+        macro=_macro(), derivatives=_deriv(), sentiment=_senti(), technical=_tech()
+    )
     assert synth.overall_bias == "Bullish"
     assert synth.confluence_score == pytest.approx(settings.CONFIDENCE_SHRINKAGE)
     assert synth.analyst_confluence == pytest.approx(synth.confluence_score)
@@ -70,24 +74,24 @@ def test_full_agreement_bullish_high_confluence():
     }
 
 
-def test_shrinkage_scales_confluence():
+def test_shrinkage_scales_confluence() -> None:
     """confluence = |weighted_sum| × CONFIDENCE_SHRINKAGE (один technical-голос)."""
     synth = aggregate_signals(
-        _macro(btc_bias="Neutral"),
-        _deriv(overall_bias="Neutral"),
-        _senti(overall_bias="Neutral"),
-        _tech(signal_direction="Long"),
+        macro=_macro(btc_bias="Neutral"),
+        derivatives=_deriv(overall_bias="Neutral"),
+        sentiment=_senti(overall_bias="Neutral"),
+        technical=_tech(signal_direction="Long"),
     )
-    expected = _WEIGHTS["technical"] * settings.CONFIDENCE_SHRINKAGE
+    expected = _TECHNICAL_WEIGHT * settings.CONFIDENCE_SHRINKAGE
     assert synth.confluence_score == pytest.approx(expected)
 
 
-def test_conflict_flagged_and_confluence_low():
+def test_conflict_flagged_and_confluence_low() -> None:
     synth = aggregate_signals(
-        _macro(btc_bias="Bullish"),
-        _deriv(overall_bias="Bearish"),
-        _senti(overall_bias="Neutral"),
-        _tech(signal_direction="No Signal"),
+        macro=_macro(btc_bias="Bullish"),
+        derivatives=_deriv(overall_bias="Bearish"),
+        sentiment=_senti(overall_bias="Neutral"),
+        technical=_tech(signal_direction="No Signal"),
     )
     assert synth.has_significant_conflict is True
     assert synth.overall_bias == "Neutral"
@@ -95,12 +99,12 @@ def test_conflict_flagged_and_confluence_low():
     assert any("conflict" in r.lower() for r in synth.top_risks)
 
 
-def test_all_neutral_zero_confluence():
+def test_all_neutral_zero_confluence() -> None:
     synth = aggregate_signals(
-        _macro(btc_bias="Neutral"),
-        _deriv(overall_bias="Neutral"),
-        _senti(overall_bias="Neutral"),
-        _tech(signal_direction="No Signal"),
+        macro=_macro(btc_bias="Neutral"),
+        derivatives=_deriv(overall_bias="Neutral"),
+        sentiment=_senti(overall_bias="Neutral"),
+        technical=_tech(signal_direction="No Signal"),
     )
     assert synth.overall_bias == "Neutral"
     assert synth.confluence_score == pytest.approx(0.0)

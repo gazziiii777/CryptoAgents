@@ -7,6 +7,8 @@ class RateLimiter:
     """Leaky bucket: пропускает один запрос каждые 60/rate_per_minute секунд."""
 
     def __init__(self, rate_per_minute: int) -> None:
+        if rate_per_minute <= 0:
+            raise ValueError(f"rate_per_minute must be positive, got {rate_per_minute}")
         self._interval = SECONDS_PER_MINUTE / rate_per_minute
         self._lock = asyncio.Lock()
         self._next_allowed = 0.0

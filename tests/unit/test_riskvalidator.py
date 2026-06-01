@@ -2,9 +2,13 @@ from app.models.setup import CryptoSetup
 from app.riskvalidator import validate_risk
 
 
-def _setup(risk_reward: float = 2.0, funding_impact_pct: float = 0.0006) -> CryptoSetup:
+def _setup(
+    risk_reward: float = 2.0,
+    funding_impact_pct: float = 0.0006,
+    direction: str = "long",
+) -> CryptoSetup:
     return CryptoSetup(
-        direction="long",
+        direction=direction,
         setup_type="trend_continuation",
         entry_price=101.0,
         stop_price=100.0,
@@ -27,7 +31,17 @@ def test_rejects_low_risk_reward():
     assert "R:R" in reason
 
 
-def test_rejects_extreme_funding():
-    reason = validate_risk(_setup(funding_impact_pct=0.05))
+def test_rejects_extreme_funding_for_long_that_pays():
+    reason = validate_risk(_setup(funding_impact_pct=0.05, direction="long"))
+    assert reason is not None
+    assert "funding" in reason
+
+
+def test_short_passes_when_positive_funding_is_income():
+    assert validate_risk(_setup(funding_impact_pct=0.05, direction="short")) is None
+
+
+def test_short_rejected_when_negative_funding_is_cost():
+    reason = validate_risk(_setup(funding_impact_pct=-0.05, direction="short"))
     assert reason is not None
     assert "funding" in reason

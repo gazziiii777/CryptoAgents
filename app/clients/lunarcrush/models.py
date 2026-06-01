@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
@@ -52,18 +52,18 @@ def _unix_to_datetime(v: object) -> datetime | None:
     if not isinstance(v, str | int | float):
         return None
     try:
-        return datetime.fromtimestamp(int(v), tz=timezone.utc)
+        return datetime.fromtimestamp(int(v), tz=UTC)
     except (TypeError, ValueError, OSError):
         return None
 
 
 def _unix_to_datetime_now(v: object) -> datetime:
-    return _unix_to_datetime(v) or datetime.now(timezone.utc)
+    return _unix_to_datetime(v) or datetime.now(UTC)
 
 
 def _split_categories(v: object) -> list[str]:
     if isinstance(v, list):
-        return v
+        return [str(c) for c in v]
     if not v or not isinstance(v, str):
         return []
     return [c.strip() for c in v.split(",") if c.strip()]

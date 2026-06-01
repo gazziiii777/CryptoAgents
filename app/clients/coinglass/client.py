@@ -26,9 +26,9 @@ from app.clients.coinglass.models import (
     TokenUnlockEntry,
     TopPositionRatio,
 )
-from core.settings import settings
 from core.constants.http import AUTH_STATUS_CODES, RATE_LIMIT_STATUS
 from core.constants.time import MS_PER_SECOND
+from core.settings import settings
 from core.symbols import base_currency, to_exchange_pair
 
 logger = logging.getLogger(__name__)
@@ -110,8 +110,10 @@ class CoinGlassClient:
         self._reopen_task: asyncio.Task[None] | None = None
 
     async def _reopen_gate(self) -> None:
-        await asyncio.sleep(_RATE_LIMIT_PAUSE_S)
-        self._gate.set()
+        try:
+            await asyncio.sleep(_RATE_LIMIT_PAUSE_S)
+        finally:
+            self._gate.set()
         logger.info("CoinGlass rate limit pause lifted, resuming requests")
 
     async def close(self) -> None:
@@ -152,7 +154,7 @@ class CoinGlassClient:
                     body: dict[str, Any] = resp.json()
                     if body.get(_RESP_CODE_KEY) == _RESP_OK_CODE:
                         return body
-                    msg = body.get(_RESP_MSG_KEY, _RESP_MSG_DEFAULT)
+                    msg = str(body.get(_RESP_MSG_KEY, _RESP_MSG_DEFAULT))
 
                 if _RATE_LIMIT_MSG in msg:
                     if attempt < _MAX_RETRIES - 1:
@@ -170,12 +172,12 @@ class CoinGlassClient:
                         await self._gate.wait()
                         continue
                     logger.error(
-                        "CoinGlass rate limit persists after %d retries on %s — request dropped",
-                        attempt,
+                        "CoinGlass rate limit persists after %d attempts on %s — request dropped",
+                        _MAX_RETRIES,
                         path,
                     )
                     raise RuntimeError(
-                        f"CoinGlass rate limited after {attempt} retries: {path}"
+                        f"CoinGlass rate limited after {_MAX_RETRIES} attempts: {path}"
                     )
                 raise CoinGlassAPIError(f"CoinGlass API error on {path}: {msg}")
             raise RuntimeError(f"CoinGlass API error on {path}: exhausted all retries")

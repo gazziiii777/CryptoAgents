@@ -59,7 +59,7 @@ def _local_minima(
     values: list[float], radius: int = _LOCAL_EXTREMUM_RADIUS
 ) -> list[tuple[int, float]]:
     """Индексы и значения локальных минимумов: точка меньше radius соседей с каждой стороны."""
-    result = []
+    result: list[tuple[int, float]] = []
     for i in range(radius, len(values) - radius):
         window = values[i - radius : i] + values[i + 1 : i + radius + 1]
         if values[i] < min(window):
@@ -71,7 +71,7 @@ def _local_maxima(
     values: list[float], radius: int = _LOCAL_EXTREMUM_RADIUS
 ) -> list[tuple[int, float]]:
     """Индексы и значения локальных максимумов: точка больше radius соседей с каждой стороны."""
-    result = []
+    result: list[tuple[int, float]] = []
     for i in range(radius, len(values) - radius):
         window = values[i - radius : i] + values[i + 1 : i + radius + 1]
         if values[i] > max(window):

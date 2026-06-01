@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,6 +13,7 @@ from app.notifications.positions import (
     notify_position_closed,
     notify_position_opened,
 )
+from core.settings import settings
 from db.models import ExitReason, PositionSide, PositionState, VirtualPosition
 
 _ENTRY_TS = datetime(2026, 5, 29, 12, 0, tzinfo=timezone.utc)
@@ -99,10 +101,32 @@ def test_r_multiple_handles_zero_risk() -> None:
 
 
 @pytest.mark.unit
-async def test_notify_open_is_noop_without_credentials() -> None:
+async def test_notify_open_is_noop_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    disabled = settings.model_copy(
+        update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
+    )
+    monkeypatch.setattr("app.notifications.positions.settings", disabled)
+    client_cls = MagicMock()
+    monkeypatch.setattr("app.notifications.positions.TelegramClient", client_cls)
+
     await notify_position_opened(_position(), 0.52)
+
+    client_cls.assert_not_called()
 
 
 @pytest.mark.unit
-async def test_notify_close_is_noop_without_credentials() -> None:
+async def test_notify_close_is_noop_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    disabled = settings.model_copy(
+        update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
+    )
+    monkeypatch.setattr("app.notifications.positions.settings", disabled)
+    client_cls = MagicMock()
+    monkeypatch.setattr("app.notifications.positions.TelegramClient", client_cls)
+
     await notify_position_closed(_position(), Decimal("2000"))
+
+    client_cls.assert_not_called()

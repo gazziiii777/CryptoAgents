@@ -35,6 +35,8 @@ class PositionSide(StrEnum):
 
 class ExitReason(StrEnum):
     STOP = "stop"
+    BREAKEVEN = "breakeven"
+    TRAILING_STOP = "trailing_stop"
     TARGET = "target"
     INVALIDATION = "invalidation"
     EXPIRED = "expired"

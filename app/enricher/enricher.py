@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -61,9 +61,11 @@ class DataEnricher:
                 return_exceptions=True,
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         enriched: list[EnrichedCandidate] = []
         for candidate, per_result in zip(candidates, per_symbol):
+            if isinstance(per_result, asyncio.CancelledError):
+                raise per_result
             if isinstance(per_result, BaseException):
                 logger.warning(
                     "Enricher: per-symbol fetch failed for %s: %s",
@@ -137,7 +139,6 @@ class DataEnricher:
             lunarcrush.fetch_topic_posts(topic),
             lunarcrush.fetch_coin_time_series(coin_ref, bucket="day", interval="1w"),
             lunarcrush.fetch_topic_ai_context(topic),
-            return_exceptions=False,
         )
         whatsup = (
             await lunarcrush.fetch_topic_whatsup(topic)

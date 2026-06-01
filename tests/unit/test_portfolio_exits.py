@@ -4,7 +4,12 @@ from decimal import Decimal
 import pytest
 
 from app.clients.ccxt.models import OHLCVCandle
-from app.portfolio.exits import evaluate_candle_exit, funding_cycles, is_expired
+from app.portfolio.exits import (
+    evaluate_candle_exit,
+    funding_cycles,
+    is_expired,
+    walk_managed_exit,
+)
 from db.models import ExitReason, PositionSide
 
 _TS = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -12,6 +17,108 @@ _TS = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 def _candle(high: float, low: float) -> OHLCVCandle:
     return OHLCVCandle(timestamp=0, open=low, high=high, low=low, close=low, volume=1.0)
+
+
+def _c(idx: int, high: float, low: float) -> OHLCVCandle:
+    ts_ms = int((_TS.timestamp() + (idx + 1) * 4 * 3600) * 1000)
+    return OHLCVCandle(
+        timestamp=ts_ms, open=low, high=high, low=low, close=low, volume=1.0
+    )
+
+
+def _walk_long(candles: list[OHLCVCandle]):
+    return walk_managed_exit(
+        PositionSide.LONG,
+        Decimal("100"),
+        Decimal("95"),
+        Decimal("130"),
+        candles,
+        _TS,
+        1.0,
+        1.5,
+        1.0,
+    )
+
+
+@pytest.mark.unit
+def test_managed_breakeven_after_1r() -> None:
+    # +1R (105) reached, then pulls back to entry → exit at breakeven (100)
+    outcome, mfe = _walk_long([_c(0, 105, 101), _c(1, 102, 99)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.BREAKEVEN
+    assert outcome.price == Decimal("100")
+    assert mfe == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+def test_managed_trailing_locks_profit() -> None:
+    # runs to +2R (110), pulls back → trail exit at 110-1R = 105
+    outcome, mfe = _walk_long([_c(0, 110, 101), _c(1, 106, 104)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.TRAILING_STOP
+    assert outcome.price == Decimal("105")
+    assert mfe == pytest.approx(2.0)
+
+
+@pytest.mark.unit
+def test_managed_plain_stop_unchanged() -> None:
+    # drops to initial stop before any trigger → reason stays STOP
+    outcome, mfe = _walk_long([_c(0, 99, 94)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.STOP
+    assert outcome.price == Decimal("95")
+    assert mfe == pytest.approx(0.0)
+
+
+@pytest.mark.unit
+def test_managed_target_still_wins() -> None:
+    outcome, _ = _walk_long([_c(0, 131, 101)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.TARGET
+    assert outcome.price == Decimal("130")
+
+
+def _walk_short(candles: list[OHLCVCandle]):
+    return walk_managed_exit(
+        PositionSide.SHORT,
+        Decimal("100"),
+        Decimal("105"),
+        Decimal("70"),
+        candles,
+        _TS,
+        1.0,
+        1.5,
+        1.0,
+    )
+
+
+@pytest.mark.unit
+def test_managed_short_breakeven() -> None:
+    # short: -1R (95) reached, then pulls back up to entry → breakeven exit at 100
+    outcome, mfe = _walk_short([_c(0, 99, 95), _c(1, 101, 98)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.BREAKEVEN
+    assert outcome.price == Decimal("100")
+    assert mfe == pytest.approx(1.0)
+
+
+@pytest.mark.unit
+def test_managed_short_trailing_locks_profit() -> None:
+    # short runs to -2R (90), pulls back → trail exit at 90+1R = 95
+    outcome, mfe = _walk_short([_c(0, 99, 90), _c(1, 96, 94)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.TRAILING_STOP
+    assert outcome.price == Decimal("95")
+    assert mfe == pytest.approx(2.0)
+
+
+@pytest.mark.unit
+def test_managed_short_plain_stop() -> None:
+    outcome, mfe = _walk_short([_c(0, 106, 101)])
+    assert outcome is not None
+    assert outcome.reason == ExitReason.STOP
+    assert outcome.price == Decimal("105")
+    assert mfe == pytest.approx(0.0)
 
 
 @pytest.mark.unit

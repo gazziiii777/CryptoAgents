@@ -4,13 +4,13 @@ from typing import Self
 from binance import AsyncClient
 
 from app.clients.binance.models import CVDPoint, LongShortRatio, OISnapshot
-from core.settings import settings
 from core.constants.time import (
     HOURS_PER_DAY,
     MINUTES_PER_HOUR,
     MS_PER_SECOND,
     SECONDS_PER_MINUTE,
 )
+from core.settings import settings
 from core.symbols import to_exchange_pair
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class BinanceClient:
             symbol=futures_symbol, interval=interval, limit=num_candles
         )
 
-        result = []
+        result: list[CVDPoint] = []
         cumulative = 0.0
         for candle in raw:
             total_vol = float(candle[_KLINE_VOLUME_IDX])

@@ -181,8 +181,8 @@ class LunarCrushClient:
             return []
 
         items = resp.json().get("data") or []
-        n = limit if limit is not None else settings.LUNARCRUSH_NEWS_LIMIT
-        return [LunarCrushNewsItem.model_validate(item) for item in items[:n]]
+        news_limit = limit if limit is not None else settings.LUNARCRUSH_NEWS_LIMIT
+        return [LunarCrushNewsItem.model_validate(item) for item in items[:news_limit]]
 
     async def fetch_topic_posts(
         self, topic: str, limit: int | None = None
@@ -199,8 +199,8 @@ class LunarCrushClient:
             return []
 
         items = resp.json().get("data") or []
-        n = limit if limit is not None else settings.LUNARCRUSH_POSTS_LIMIT
-        return [LunarCrushPost.model_validate(item) for item in items[:n]]
+        posts_limit = limit if limit is not None else settings.LUNARCRUSH_POSTS_LIMIT
+        return [LunarCrushPost.model_validate(item) for item in items[:posts_limit]]
 
     async def fetch_coin_time_series(
         self, coin: str, bucket: str = "day", interval: str = "1w"

@@ -1,11 +1,24 @@
 from collections.abc import AsyncIterator
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from core.settings import settings
 from db import models  # noqa: F401 — registers tables on metadata
+
+
+@pytest.fixture(autouse=True)
+def _disable_telegram(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Глушит Telegram во всех тестах: portfolio-тесты открывают/закрывают позиции и
+    дёрнули бы реальный notify, если в локальном .env задан токен бота.
+    """
+    disabled = settings.model_copy(
+        update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
+    )
+    monkeypatch.setattr("app.notifications.positions.settings", disabled)
 
 
 @pytest_asyncio.fixture

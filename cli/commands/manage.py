@@ -37,13 +37,13 @@ def halt_trading(
     reason: str = typer.Option("", "--reason", help="Why trading is paused"),
 ) -> None:
     """Pause new entries (PortfolioManager will mark signals NO_TRADE/trading_halted)."""
-    asyncio.run(_set_halt(True, reason or None))
+    asyncio.run(_set_halt(halted=True, reason=reason or None))
     typer.echo("trading halted")
 
 
 def resume_trading() -> None:
     """Resume new entries after a halt."""
-    asyncio.run(_set_halt(False, None))
+    asyncio.run(_set_halt(halted=False, reason=None))
     typer.echo("trading resumed")
 
 
@@ -61,7 +61,7 @@ def account_create(
     balance: int = typer.Option(..., "--balance", min=1, help="Initial USDT balance"),
 ) -> None:
     """Create a paper-trading account."""
-    account_id = asyncio.run(_account_create(name, balance))
+    account_id = asyncio.run(_account_create(name=name, balance=balance))
     typer.echo(f"account created id={account_id} name={name} balance={balance}")
 
 
@@ -74,8 +74,10 @@ async def _force_close(position_id: int) -> str | None:
         account = await ensure_default_account(session)
         candles = await ccxt.fetch_ohlcv(position.symbol, timeframe="4h", limit=1)
         price = Decimal(str(candles[-1].close)) if candles else position.entry_price
-        watcher = PositionWatcher(session, ccxt, universe_symbols=set())
-        pnl = await watcher.force_close(account, position, price, ExitReason.MANUAL)
+        watcher = PositionWatcher(session=session, ccxt=ccxt, universe_symbols=set())
+        pnl = await watcher.force_close(
+            account=account, position=position, price=price, reason=ExitReason.MANUAL
+        )
         return str(pnl)
 
 
@@ -161,5 +163,7 @@ def manual_signal(
     """Submit a manual signal (bypass screener) through PortfolioManager risk checks."""
     if side not in ("long", "short"):
         raise typer.BadParameter("side must be 'long' or 'short'")
-    decision = asyncio.run(_manual_signal(symbol, side, entry, stop, target))
+    decision = asyncio.run(
+        _manual_signal(symbol=symbol, side=side, entry=entry, stop=stop, target=target)
+    )
     typer.echo(f"manual signal decision: {decision}")

@@ -2,7 +2,7 @@ import asyncio
 import logging
 import math
 import signal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.clients.ccxt.client import CcxtClient
 from app.pipeline.runner import run_pipeline
@@ -85,14 +85,14 @@ async def run_forever(symbol_limit: int | None = None) -> None:
                 await run_tick(symbol_limit)
             except Exception:
                 logger.error("scheduler: tick failed", exc_info=True)
-            delay = seconds_until_next_tick(datetime.now(timezone.utc))
+            delay = seconds_until_next_tick(datetime.now(UTC))
             logger.info(
                 "scheduler: sleeping until next tick", extra={"delay_s": round(delay)}
             )
             try:
                 await asyncio.wait_for(stop.wait(), timeout=delay)
                 break
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
     finally:
         await dispose_engine()

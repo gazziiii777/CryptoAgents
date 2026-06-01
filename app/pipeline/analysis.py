@@ -36,6 +36,7 @@ from core.constants.decisions import (
     REASON_NEUTRAL,
     REASON_NO_SETUP,
     REASON_RISK_PREFIX,
+    REASON_RSI_EXTREME,
     REASON_SIGNAL_READY,
 )
 from core.constants.time import MS_PER_SECOND
@@ -62,6 +63,15 @@ def _manipulation_context(candidate: EnrichedCandidate) -> str:
         f"- pump_risk: {candidate.social.pump_risk}\n"
         f"- recent liquidation spike: {signals.liq_spike}"
     )
+
+
+def _rsi_extreme_blocks(direction: str, rsi: float | None) -> bool:
+    """True, если вход против экстремума RSI: шорт в перепроданность / лонг в перекупленность."""
+    if rsi is None:
+        return False
+    if direction == "short":
+        return rsi < settings.RSI_SHORT_FLOOR
+    return rsi > settings.RSI_LONG_CEIL
 
 
 async def _run_setup_chain(
@@ -92,6 +102,8 @@ async def _run_setup_chain(
     direction: Literal["long", "short"] = (
         "long" if synthesis.overall_bias == "Bullish" else "short"
     )
+    if _rsi_extreme_blocks(direction, candidate.screener.signals.rsi_level):
+        return None, None, None, REASON_RSI_EXTREME, None
     current_price = candles_4h[-1].close
     atr = calc_atr(candles_4h)
     funding_rate = candidate.screener.signals.funding_rate

@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 from app.models.enricher import EnrichedCandidate
 from app.models.setup import CryptoSetup, FinalSignal, SetupIntent
 
+Bias = Literal["Bullish", "Bearish", "Neutral"]
+
 
 class MacroReport(BaseModel):
     reasoning: str = Field(
@@ -15,7 +17,7 @@ class MacroReport(BaseModel):
     regime: Literal["Trending Up", "Trending Down", "Ranging", "High Volatility"] = (
         Field(description="Market regime from BTC 24h/7d action and market-cap moves.")
     )
-    btc_bias: Literal["Bullish", "Bearish", "Neutral"] = Field(
+    btc_bias: Bias = Field(
         description="Directional lean for BTC over the next few 4h candles."
     )
     dominance_trend: Literal["Rising", "Falling", "Flat"] = Field(
@@ -49,7 +51,7 @@ class DerivativesReport(BaseModel):
     cvd_direction: Literal["Accumulation", "Distribution", "Neutral"] = Field(
         description="Cumulative volume delta: net buying (accumulation) or selling."
     )
-    overall_bias: Literal["Bullish", "Bearish", "Neutral"] = Field(
+    overall_bias: Bias = Field(
         description="Net directional bias from the derivatives picture."
     )
 
@@ -70,9 +72,7 @@ class SentimentReport(BaseModel):
     news_sentiment: Literal["Positive", "Neutral", "Negative"] = Field(
         description="Tone of recent news / catalysts."
     )
-    overall_bias: Literal["Bullish", "Bearish", "Neutral"] = Field(
-        description="Net directional bias from sentiment."
-    )
+    overall_bias: Bias = Field(description="Net directional bias from sentiment.")
 
 
 class KeyLevel(BaseModel):
@@ -92,12 +92,8 @@ class TechnicalReport(BaseModel):
         description="Read the structure FIRST (1-3 sentences): trend, recent swings, "
         "where price sits vs the key levels. Then fill the rest to follow from it."
     )
-    htf_bias: Literal["Bullish", "Bearish", "Neutral"] = Field(
-        description="Higher-timeframe (1d) directional bias."
-    )
-    setup_bias: Literal["Bullish", "Bearish", "Neutral"] = Field(
-        description="4h setup directional bias."
-    )
+    htf_bias: Bias = Field(description="Higher-timeframe (1d) directional bias.")
+    setup_bias: Bias = Field(description="4h setup directional bias.")
     key_levels: list[KeyLevel] = Field(
         description="Most relevant support/resistance, chosen ONLY from provided levels."
     )
@@ -111,7 +107,7 @@ class TechnicalReport(BaseModel):
 
 
 class SignalSynthesis(BaseModel):
-    overall_bias: Literal["Bullish", "Bearish", "Neutral"]
+    overall_bias: Bias
     confluence_score: float = Field(ge=0.0, le=1.0)
     analyst_confluence: float = Field(ge=0.0, le=1.0, default=0.0)
     has_significant_conflict: bool

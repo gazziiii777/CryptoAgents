@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     NEAR_SWING_WINDOW: int = 50
     RSI_OVERBOUGHT: float = 70.0
     RSI_OVERSOLD: float = 30.0
+    RSI_SHORT_FLOOR: float = Field(default=25.0, ge=0.0, le=100.0)
+    RSI_LONG_CEIL: float = Field(default=75.0, ge=0.0, le=100.0)
 
     OI_TREND_MIN_PCT: float = 0.15
     OI_CHANGE_4H_SCORE_PCT: float = 0.05
@@ -142,12 +144,19 @@ class Settings(BaseSettings):
     DEFAULT_INITIAL_BALANCE: int = Field(default=2000, ge=1)
     RISK_PER_TRADE_MIN_PCT: float = Field(default=0.005, gt=0.0, le=0.1)
     RISK_PER_TRADE_MAX_PCT: float = Field(default=0.02, gt=0.0, le=0.2)
+    MARGIN_PER_TRADE_MIN_PCT: float = Field(default=0.03, gt=0.0, le=0.5)
+    MARGIN_PER_TRADE_MAX_PCT: float = Field(default=0.06, gt=0.0, le=1.0)
     MAX_CONCURRENT_POSITIONS: int = Field(default=5, ge=1, le=50)
     MAX_SAME_DIRECTION: int = Field(default=2, ge=1, le=50)
     MAX_LEVERAGE: int = Field(default=10, ge=1, le=125)
     DRAWDOWN_HALT_PCT: float = Field(default=0.10, gt=0.0, le=1.0)
     FUNDING_KILL_SWITCH_PCT: float = Field(default=0.0025, gt=0.0, le=1.0)
     TAKER_FEE_RATE: float = Field(default=0.0005, ge=0.0, le=0.01)
+    BREAKEVEN_TRIGGER_R: float = Field(default=1.0, gt=0.0, le=10.0)
+    TRAIL_ACTIVATION_R: float = Field(default=1.5, gt=0.0, le=10.0)
+    TRAIL_DISTANCE_R: float = Field(default=1.0, gt=0.0, le=10.0)
+    EXIT_TIMEFRAME: str = "15m"
+    EXIT_CANDLE_LIMIT: int = Field(default=1000, ge=1, le=1500)
 
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None

@@ -28,3 +28,18 @@ def compute_qty(
     if risk_per_unit <= 0:
         return Decimal(0)
     return (nav * risk_pct) / risk_per_unit
+
+
+def compute_qty_by_margin(
+    nav: Decimal, entry_price: Decimal, leverage: int, margin_pct: Decimal
+) -> Decimal:
+    """Размер по марже × плечу: notional = NAV × margin_pct × leverage, qty = notional / entry.
+
+    Так профит и убыток масштабируются плечом (qty растёт с leverage) — в отличие от
+    риск-сайзинга, где плечо на размер не влияло. Цена реализации: риск на сделку =
+    margin_pct × leverage × дистанция_стопа и потому зависит от плеча.
+    """
+    if entry_price <= 0:
+        return Decimal(0)
+    notional = nav * margin_pct * Decimal(leverage)
+    return notional / entry_price

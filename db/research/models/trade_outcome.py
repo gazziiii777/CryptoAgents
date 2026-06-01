@@ -33,6 +33,7 @@ class TradeOutcome(ResearchBase):
 
     realized_pnl: Mapped[float] = mapped_column(Float)
     r_multiple: Mapped[float] = mapped_column(Float)
+    max_favorable_excursion_r: Mapped[float | None] = mapped_column(Float)
     holding_hours: Mapped[float] = mapped_column(Float)
     simulated_fees: Mapped[float] = mapped_column(Float)
     simulated_funding: Mapped[float] = mapped_column(Float)

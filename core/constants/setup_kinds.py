@@ -1,0 +1,5 @@
+KIND_ATR_DISTANCE = "atr_distance"
+KIND_SWING_LOW_4H = "swing_low_4h"
+KIND_SWING_HIGH_4H = "swing_high_4h"
+KIND_PREV_DAY_HIGH = "prev_day_high"
+KIND_PREV_DAY_LOW = "prev_day_low"

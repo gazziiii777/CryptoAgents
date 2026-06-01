@@ -4,6 +4,13 @@ from string import Template
 from app.agents.setup.state import SetupState
 from app.llm_gateway.service import LLMService
 from app.models.setup import SetupIntent
+from core.constants.setup_kinds import (
+    KIND_ATR_DISTANCE,
+    KIND_PREV_DAY_HIGH,
+    KIND_PREV_DAY_LOW,
+    KIND_SWING_HIGH_4H,
+    KIND_SWING_LOW_4H,
+)
 from core.prompts.loader import load_prompt
 from core.settings import settings
 
@@ -12,10 +19,18 @@ logger = logging.getLogger(__name__)
 _ENTITY_TYPE = "setup"
 _MAX_ATTEMPTS = 2
 
-_LONG_STOP_KINDS = frozenset({"swing_low_4h", "atr_distance"})
-_LONG_TARGET_KINDS = frozenset({"swing_high_4h", "prev_day_high", "atr_distance"})
-_SHORT_STOP_KINDS = frozenset({"swing_high_4h", "atr_distance"})
-_SHORT_TARGET_KINDS = frozenset({"swing_low_4h", "prev_day_low", "atr_distance"})
+_LONG_STOP_KINDS = frozenset({KIND_SWING_LOW_4H, KIND_ATR_DISTANCE})
+_LONG_TARGET_KINDS = frozenset({
+    KIND_SWING_HIGH_4H,
+    KIND_PREV_DAY_HIGH,
+    KIND_ATR_DISTANCE,
+})
+_SHORT_STOP_KINDS = frozenset({KIND_SWING_HIGH_4H, KIND_ATR_DISTANCE})
+_SHORT_TARGET_KINDS = frozenset({
+    KIND_SWING_LOW_4H,
+    KIND_PREV_DAY_LOW,
+    KIND_ATR_DISTANCE,
+})
 
 
 def _validate_intent(intent: SetupIntent, direction: str) -> str | None:
@@ -61,7 +76,9 @@ def _render_user_prompt(template: str, state: SetupState) -> str:
     )
 
 
-async def build_node(state: SetupState, *, service: LLMService) -> dict[str, object]:
+async def build_node(
+    state: SetupState, *, service: LLMService
+) -> dict[str, SetupIntent | int]:
     """Нода 1: LLM строит SetupIntent (deep-модель)."""
     prompt = load_prompt(_ENTITY_TYPE)
     intent = await service.structured(
@@ -74,7 +91,7 @@ async def build_node(state: SetupState, *, service: LLMService) -> dict[str, obj
     return {"intent": intent, "attempts": state.attempts + 1}
 
 
-def validate_node(state: SetupState) -> dict[str, object]:
+def validate_node(state: SetupState) -> dict[str, str | None]:
     """Нода 2: проверка constraints → validation_error (None если ок)."""
     if state.intent is None:
         return {"validation_error": "no intent produced"}

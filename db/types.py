@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -39,7 +39,9 @@ class DecimalText(TypeDecorator[Decimal]):
             return format(decimal_value, "f")
         return decimal_value
 
-    def process_result_value(self, value: object, dialect: Dialect) -> Decimal | None:
+    def process_result_value(
+        self, value: Decimal | str | int | float | None, dialect: Dialect
+    ) -> Decimal | None:
         if value is None:
             return None
         if isinstance(value, Decimal):
@@ -67,11 +69,11 @@ class UTCDateTime(TypeDecorator[datetime]):
             raise ValueError(
                 "naive datetime is not allowed; pass timezone-aware UTC datetime"
             )
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
 
     def process_result_value(
         self, value: datetime | None, dialect: Dialect
     ) -> datetime | None:
         if value is None:
             return None
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)

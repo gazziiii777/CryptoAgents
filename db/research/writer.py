@@ -16,7 +16,7 @@ from db.research.models import AgentOutput, SignalRecord, TradeOutcome
 logger = logging.getLogger(__name__)
 
 
-def _enum_value(value: object) -> str:
+def _enum_value(value: Enum | str) -> str:
     """Строковое значение enum-члена (или str(value) для не-enum) для research-колонок."""
     if isinstance(value, Enum):
         return str(value.value)
@@ -75,7 +75,7 @@ def _build_signal_record(
         overall_bias=synthesis.overall_bias,
         has_conflict=synthesis.has_significant_conflict,
         synthesis_reasoning=synthesis.reasoning,
-        top_risks="; ".join(synthesis.top_risks) or None,
+        top_risks="; ".join(synthesis.top_risks) if synthesis.top_risks else None,
         trader_verdict=verdict.verdict if verdict else None,
         trader_conviction=verdict.conviction if verdict else None,
         da_critical_count=len(da.critical_risks) if da else None,
@@ -162,6 +162,7 @@ async def record_trade_outcome(
     realized_pnl: Decimal,
     fees: Decimal,
     funding: Decimal,
+    mfe_r: float,
 ) -> None:
     """Пишет trade_outcome закрытой позиции (R-multiple, время). Сбой не ломает торговлю."""
     try:
@@ -187,6 +188,7 @@ async def record_trade_outcome(
                     exit_reason=exit_reason,
                     realized_pnl=float(realized_pnl),
                     r_multiple=r_multiple,
+                    max_favorable_excursion_r=mfe_r,
                     holding_hours=holding_hours,
                     simulated_fees=float(fees),
                     simulated_funding=float(funding),

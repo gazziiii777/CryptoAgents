@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import cast
 
@@ -9,7 +8,7 @@ from app.clients.ccxt.client import CcxtClient
 from app.clients.ccxt.models import OHLCVCandle
 from app.models.setup import CryptoSetup
 from app.notifications.positions import notify_position_closed
-from app.portfolio.exits import evaluate_candle_exit, funding_cycles, is_expired
+from app.portfolio.exits import funding_cycles, is_expired, walk_managed_exit
 from app.portfolio.models import ExitOutcome
 from app.portfolio.pnl import (
     entry_exit_fees,
@@ -18,10 +17,9 @@ from app.portfolio.pnl import (
     unrealized_pnl,
 )
 from core.constants.entities import ENTITY_POSITION
-from core.constants.time import MS_PER_SECOND
-from db.research.writer import record_trade_outcome
 from core.settings import settings
 from db._time import utcnow
+from db.research.writer import record_trade_outcome
 from db.models import Account, EventType, ExitReason, PositionState, VirtualPosition
 from db.repositories.account_repo import AccountRepo
 from db.repositories.event_repo import EventRepo
@@ -80,14 +78,20 @@ class PositionWatcher:
         """Принудительно закрывает позицию по цене price. Возвращает realized PnL."""
         funding_rate = await self._latest_funding(position.symbol)
         outcome = ExitOutcome(reason, price, utcnow())
-        return await self._close(account, position, outcome, funding_rate)
+        return await self._close(account, position, outcome, funding_rate, mfe_r=0.0)
 
     async def _process(
         self, account: Account, position: VirtualPosition
     ) -> Decimal | None:
-        """Обрабатывает одну позицию. None — закрыта; иначе текущая mark-цена."""
+        """Обрабатывает одну позицию. None — закрыта; иначе текущая mark-цена.
+
+        Выходы считаются по мелкому таймфрейму (EXIT_TIMEFRAME, по умолч. 15m) — это даёт
+        внутрибарную точность стоп/тейк/трейлинга, которой нет на 4h OHLC.
+        """
         candles = await self._ccxt.fetch_ohlcv(
-            position.symbol, timeframe="4h", limit=settings.SCREENER_4H_LIMIT
+            position.symbol,
+            timeframe=settings.EXIT_TIMEFRAME,
+            limit=settings.EXIT_CANDLE_LIMIT,
         )
         if not candles:
             logger.warning("no candles for open position %s", position.symbol)
@@ -95,10 +99,12 @@ class PositionWatcher:
         funding_rate = await self._latest_funding(position.symbol)
         last_price = Decimal(str(candles[-1].close))
 
-        outcome = await self._find_exit(position, candles, funding_rate, last_price)
+        outcome, mfe_r = await self._find_exit(
+            position, candles, funding_rate, last_price
+        )
         if outcome is None:
             return last_price
-        await self._close(account, position, outcome, funding_rate)
+        await self._close(account, position, outcome, funding_rate, mfe_r)
         return None
 
     async def _find_exit(
@@ -107,32 +113,30 @@ class PositionWatcher:
         candles: list[OHLCVCandle],
         funding_rate: float,
         last_price: Decimal,
-    ) -> ExitOutcome | None:
-        for candle in candles:
-            candle_ts = datetime.fromtimestamp(
-                candle.timestamp / MS_PER_SECOND, tz=timezone.utc
-            )
-            if candle_ts <= position.entry_ts:
-                continue
-            outcome = evaluate_candle_exit(
-                position.side,
-                position.stop_price,
-                position.target_price,
-                candle,
-                candle_ts,
-            )
-            if outcome is not None:
-                return outcome
+    ) -> tuple[ExitOutcome | None, float]:
+        outcome, mfe_r = walk_managed_exit(
+            position.side,
+            position.entry_price,
+            position.stop_price,
+            position.target_price,
+            candles,
+            position.entry_ts,
+            settings.BREAKEVEN_TRIGGER_R,
+            settings.TRAIL_ACTIVATION_R,
+            settings.TRAIL_DISTANCE_R,
+        )
+        if outcome is not None:
+            return outcome, mfe_r
 
         now = utcnow()
         if position.symbol not in self._universe:
-            return ExitOutcome(ExitReason.DELISTED, last_price, now)
+            return ExitOutcome(ExitReason.DELISTED, last_price, now), mfe_r
         if abs(funding_rate) >= settings.FUNDING_KILL_SWITCH_PCT:
-            return ExitOutcome(ExitReason.EXTREME_FUNDING, last_price, now)
+            return ExitOutcome(ExitReason.EXTREME_FUNDING, last_price, now), mfe_r
         valid_hours = await self._valid_hours(position.entry_signal_id)
         if valid_hours is not None and is_expired(position.entry_ts, valid_hours, now):
-            return ExitOutcome(ExitReason.EXPIRED, last_price, now)
-        return None
+            return ExitOutcome(ExitReason.EXPIRED, last_price, now), mfe_r
+        return None, mfe_r
 
     async def _close(
         self,
@@ -140,6 +144,7 @@ class PositionWatcher:
         position: VirtualPosition,
         outcome: ExitOutcome,
         funding_rate: float,
+        mfe_r: float,
     ) -> Decimal:
         fee_rate = Decimal(str(settings.TAKER_FEE_RATE))
         rate = Decimal(str(funding_rate))
@@ -173,7 +178,7 @@ class PositionWatcher:
             account,
             current_balance=account.current_balance,
             equity=account.current_balance,
-            update_peak=False,
+            update_peak=True,
         )
         await self._events.append(
             event_type=EventType.POSITION_CLOSED,
@@ -202,6 +207,7 @@ class PositionWatcher:
             realized_pnl=pnl,
             fees=fees,
             funding=funding,
+            mfe_r=mfe_r,
         )
         await notify_position_closed(position, account.current_balance)
         return pnl
@@ -220,6 +226,7 @@ class PositionWatcher:
             account,
             current_balance=account.current_balance,
             equity=account.current_balance + unrealized,
+            update_peak=False,
         )
 
     async def _latest_funding(self, symbol: str) -> float:

@@ -152,3 +152,29 @@ async def test_watcher_no_candles_does_not_count_as_closed(
     assert closed == 0
     positions = await VirtualPositionRepo(session).list_open(account.id)  # type: ignore[arg-type]
     assert len(positions) == 1
+
+
+@pytest.mark.unit
+async def test_watcher_does_not_raise_peak_on_unrealized_gain(
+    session: AsyncSession,
+) -> None:
+    entry_ts = utcnow()
+    account = await _setup_open_position(session, entry_ts=entry_ts)
+    candle = _candle(entry_ts, high=108, low=104)
+    watcher = PositionWatcher(session, _FakeCcxt([candle]), {_SYMBOL})  # type: ignore[arg-type]
+
+    await watcher.run(account)
+
+    assert account.equity > Decimal("2000")
+    assert account.peak_nav == Decimal("2000")
+
+
+@pytest.mark.unit
+async def test_watcher_raises_peak_on_realized_profit(session: AsyncSession) -> None:
+    account = await _setup_open_position(session)
+    candle = _candle(datetime(2026, 1, 1, 4, tzinfo=timezone.utc), high=111, low=105)
+    watcher = PositionWatcher(session, _FakeCcxt([candle]), {_SYMBOL})  # type: ignore[arg-type]
+
+    await watcher.run(account)
+
+    assert account.peak_nav > Decimal("2000")
