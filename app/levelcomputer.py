@@ -10,13 +10,12 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_SWING_LOOKBACK = 20
 _MIN_STOP_DISTANCE_PCT = 0.003
-_MAX_STOP_DISTANCE_PCT = 0.05
+_MAX_STOP_DISTANCE_PCT = 0.08
+_MAX_TARGET_DISTANCE_PCT = 0.20
 _KIND_ATR = "atr_distance"
-_ENTRY_KIND_MARKET = "market"
 _DEFAULT_ATR_MULTIPLIER = 2.0
 _DEFAULT_TARGET_ATR_MULTIPLIER = 3.0
 _FALLBACK_TARGET_RR = 2.0
-_MAX_ENTRY_DISTANCE_PCT = 0.08
 
 
 def _swing_high(candles_4h: list[OHLCVCandle], lookback: int) -> float:
@@ -72,9 +71,11 @@ def resolve_setup(
 ) -> CryptoSetup | None:
     """Резолвит SetupIntent в реальные цены (CryptoSetup) детерминированно.
 
-    None — если reference не резолвится или сетап не проходит sanity (stop/entry/target
-    порядок, дистанция стопа вне [0.3%, 5%], вход дальше допустимого от текущей цены).
-    Тогда выше это становится no_trade.
+    Вход исполняется по market (current_price) — лимитный entry-якорь LLM остаётся в
+    SetupIntent как замысел, но фактический филл всегда по текущей цене (без фантомных
+    лимитных заполнений). Стоп/цель считаются относительно market-входа. None — если
+    стоп вне [0.3%, 8%] или сетап не проходит sanity по порядку уровней; выше это
+    становится no_trade.
     """
     if not candles_4h or current_price <= 0:
         return None
@@ -82,21 +83,7 @@ def resolve_setup(
     if atr <= 0:
         return None
     is_long = intent.direction == "long"
-
-    if intent.entry.kind == _ENTRY_KIND_MARKET:
-        entry_anchor: float | None = current_price
-    else:
-        entry_anchor = _resolve_anchor(
-            intent.entry.kind, intent.entry.lookback, candles_4h, candles_1d
-        )
-    if entry_anchor is None:
-        return None
-    entry = entry_anchor + intent.entry_offset_atr * atr
-    if abs(entry - current_price) / current_price > _MAX_ENTRY_DISTANCE_PCT:
-        logger.info(
-            "setup rejected: entry %.6g too far from price %.6g", entry, current_price
-        )
-        return None
+    entry = current_price
 
     if intent.stop.kind == _KIND_ATR:
         raw_distance = (intent.stop.atr_multiplier or _DEFAULT_ATR_MULTIPLIER) * atr
@@ -148,6 +135,15 @@ def resolve_setup(
         logger.info(
             "target fallback to %.1fR measured move (%s)",
             _FALLBACK_TARGET_RR,
+            intent.direction,
+        )
+
+    max_target_distance = _MAX_TARGET_DISTANCE_PCT * entry
+    if abs(target - entry) > max_target_distance:
+        target = entry + max_target_distance if is_long else entry - max_target_distance
+        logger.info(
+            "target capped to %.0f%% distance (%s)",
+            _MAX_TARGET_DISTANCE_PCT * 100,
             intent.direction,
         )
 

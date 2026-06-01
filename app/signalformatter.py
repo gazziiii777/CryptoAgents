@@ -16,6 +16,7 @@ def format_signal(
         risk_reward=setup.risk_reward,
         valid_hours=setup.valid_hours,
         confluence_score=synthesis.confluence_score,
+        analyst_confluence=synthesis.analyst_confluence,
         invalidation=setup.invalidation,
         thesis=synthesis.reasoning,
         key_risks=synthesis.top_risks,

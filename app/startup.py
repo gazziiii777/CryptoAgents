@@ -25,4 +25,8 @@ def preflight() -> None:
     missing = [name for name, value in required_keys().items() if not value]
     if missing:
         raise StartupError(f"missing required env keys: {', '.join(sorted(missing))}")
-    logger.info("preflight ok (provider=%s)", settings.LLM_PROVIDER.value)
+    logger.info(
+        "preflight ok (provider=%s, telegram=%s)",
+        settings.LLM_PROVIDER.value,
+        "on" if settings.TELEGRAM_ENABLED else "off",
+    )

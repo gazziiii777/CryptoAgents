@@ -59,6 +59,7 @@ def test_full_agreement_bullish_high_confluence():
     synth = aggregate_signals(_macro(), _deriv(), _senti(), _tech())
     assert synth.overall_bias == "Bullish"
     assert synth.confluence_score == pytest.approx(settings.CONFIDENCE_SHRINKAGE)
+    assert synth.analyst_confluence == pytest.approx(synth.confluence_score)
     assert synth.has_significant_conflict is False
     assert synth.top_risks == []
     assert set(synth.scores_by_analyst) == {

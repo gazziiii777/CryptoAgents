@@ -6,6 +6,7 @@ from typing import cast
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.setup import FinalSignal
+from app.notifications.positions import notify_position_opened
 from app.portfolio.account_service import build_portfolio_state
 from app.portfolio.leverage import compute_leverage
 from app.portfolio.models import PortfolioState
@@ -86,7 +87,7 @@ class PortfolioManager:
         stop = Decimal(str(final_signal.stop_price))
         target = Decimal(str(final_signal.target_price))
         risk_pct = confidence_risk_pct(
-            final_signal.confluence_score,
+            final_signal.analyst_confluence,
             settings.CONFLUENCE_GATE,
             Decimal(str(settings.RISK_PER_TRADE_MIN_PCT)),
             Decimal(str(settings.RISK_PER_TRADE_MAX_PCT)),
@@ -143,3 +144,4 @@ class PortfolioManager:
                 "risk_pct": str(risk_pct),
             },
         )
+        await notify_position_opened(position, final_signal.confluence_score)

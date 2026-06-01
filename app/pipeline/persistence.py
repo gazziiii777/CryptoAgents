@@ -38,8 +38,11 @@ async def persist_signals(
     signal_repo = SignalRepo(session)
     event_repo = EventRepo(session)
 
+    ranked = sorted(
+        signals, key=lambda cs: cs.synthesis.analyst_confluence, reverse=True
+    )
     persisted: list[tuple[CandidateSignal, Signal]] = []
-    for candidate_signal in signals:
+    for candidate_signal in ranked:
         symbol = candidate_signal.candidate.symbol
         if await signal_repo.get_by_symbol_bar(symbol, candidate_signal.bar_close_ts):
             logger.info("signal already persisted, skipping symbol=%s", symbol)

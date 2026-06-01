@@ -54,6 +54,7 @@ class SignalRecord(ResearchBase):
     technical_confidence: Mapped[float] = mapped_column(Float)
 
     confluence_score: Mapped[float] = mapped_column(Float, index=True)
+    analyst_confluence: Mapped[float | None] = mapped_column(Float)
     overall_bias: Mapped[str] = mapped_column(String(16))
     has_conflict: Mapped[bool] = mapped_column(Boolean)
     synthesis_reasoning: Mapped[str] = mapped_column(Text)

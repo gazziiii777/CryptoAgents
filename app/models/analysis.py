@@ -113,6 +113,7 @@ class TechnicalReport(BaseModel):
 class SignalSynthesis(BaseModel):
     overall_bias: Literal["Bullish", "Bearish", "Neutral"]
     confluence_score: float = Field(ge=0.0, le=1.0)
+    analyst_confluence: float = Field(ge=0.0, le=1.0, default=0.0)
     has_significant_conflict: bool
     scores_by_analyst: dict[str, float]
     top_risks: list[str]

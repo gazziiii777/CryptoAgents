@@ -7,6 +7,7 @@ def test_format_signal_combines_setup_and_synthesis():
     synthesis = SignalSynthesis(
         overall_bias="Bullish",
         confluence_score=0.8,
+        analyst_confluence=0.65,
         has_significant_conflict=False,
         scores_by_analyst={"macro": 1.0, "technical": 1.0},
         top_risks=["low liquidity"],
@@ -31,6 +32,7 @@ def test_format_signal_combines_setup_and_synthesis():
     assert signal.direction == "long"
     assert signal.entry_price == 101.0
     assert signal.confluence_score == 0.8
+    assert signal.analyst_confluence == 0.65
     assert signal.thesis == "all analysts bullish"
     assert signal.key_risks == ["low liquidity"]
     assert signal.leverage_intent == "aggressive"

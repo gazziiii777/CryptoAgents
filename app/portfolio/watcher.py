@@ -8,6 +8,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.clients.ccxt.client import CcxtClient
 from app.clients.ccxt.models import OHLCVCandle
 from app.models.setup import CryptoSetup
+from app.notifications.positions import notify_position_closed
 from app.portfolio.exits import evaluate_candle_exit, funding_cycles, is_expired
 from app.portfolio.models import ExitOutcome
 from app.portfolio.pnl import (
@@ -202,6 +203,7 @@ class PositionWatcher:
             fees=fees,
             funding=funding,
         )
+        await notify_position_closed(position, account.current_balance)
         return pnl
 
     async def _refresh_equity(

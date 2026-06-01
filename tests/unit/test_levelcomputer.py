@@ -89,7 +89,22 @@ def test_atr_stop_distance_is_clamped_to_cap():
         funding_rate=0.0,
     )
     assert setup is not None
-    assert abs(setup.entry_price - setup.stop_price) / setup.entry_price <= 0.05 + 1e-9
+    assert abs(setup.entry_price - setup.stop_price) / setup.entry_price <= 0.08 + 1e-9
+
+
+def test_far_target_is_capped_to_max_distance():
+    setup = resolve_setup(
+        _long_intent(target=TargetReference(kind="atr_distance", atr_multiplier=100.0)),
+        _candles_4h(),
+        _candles_1d(),
+        current_price=_CURRENT_PRICE,
+        funding_rate=0.0,
+    )
+    assert setup is not None
+    assert (
+        abs(setup.target_price - setup.entry_price) / setup.entry_price <= 0.20 + 1e-9
+    )
+    assert setup.stop_price < setup.entry_price < setup.target_price
 
 
 def test_rejects_when_swing_stop_too_far():
@@ -132,15 +147,20 @@ def test_market_entry_uses_current_price():
     assert setup.stop_price < setup.entry_price < setup.target_price
 
 
-def test_rejects_entry_too_far_from_current_price():
+def test_limit_entry_executes_at_market():
     setup = resolve_setup(
-        _long_intent(),
+        _long_intent(
+            entry=EntryReference(kind="swing_low_4h", lookback=20),
+            entry_offset_atr=-0.5,
+            target=TargetReference(kind="atr_distance", atr_multiplier=3.0),
+        ),
         _candles_4h(),
         _candles_1d(),
-        current_price=200.0,
+        current_price=_CURRENT_PRICE,
         funding_rate=0.0,
     )
-    assert setup is None
+    assert setup is not None
+    assert setup.entry_price == _CURRENT_PRICE
 
 
 def test_target_falls_back_when_anchor_on_wrong_side():

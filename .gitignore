@@ -28,6 +28,9 @@ ENV/
 secrets/
 credentials.json
 
+# ============ Diploma workspace (личное, не для репо) ============
+diplom/
+
 # ============ Trading state / runtime data ============
 # SQLite БД создаётся по пути TRADINGAGENTS_DB_PATH (default ~/.tradingagents/trading.db)
 # Если кто-то запустит из проекта — *.db файлы появятся локально, не должны коммититься

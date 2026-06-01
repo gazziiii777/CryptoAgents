@@ -149,5 +149,13 @@ class Settings(BaseSettings):
     FUNDING_KILL_SWITCH_PCT: float = Field(default=0.0025, gt=0.0, le=1.0)
     TAKER_FEE_RATE: float = Field(default=0.0005, ge=0.0, le=0.01)
 
+    TELEGRAM_BOT_TOKEN: str | None = None
+    TELEGRAM_CHAT_ID: str | None = None
+
+    @computed_field
+    @property
+    def TELEGRAM_ENABLED(self) -> bool:
+        return bool(self.TELEGRAM_BOT_TOKEN and self.TELEGRAM_CHAT_ID)
+
 
 settings = Settings()

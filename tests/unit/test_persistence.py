@@ -127,3 +127,20 @@ async def test_persist_is_idempotent_per_bar(session: AsyncSession):
     candidate_signal = _candidate_signal()
     assert len(await persist_signals(session, [candidate_signal])) == 1
     assert len(await persist_signals(session, [candidate_signal])) == 0
+
+
+def _ranked_candidate(symbol: str, analyst_confluence: float) -> CandidateSignal:
+    base = _candidate_signal()
+    candidate = base.candidate.model_copy(update={"symbol": symbol})
+    synthesis = base.synthesis.model_copy(
+        update={"analyst_confluence": analyst_confluence}
+    )
+    return base.model_copy(update={"candidate": candidate, "synthesis": synthesis})
+
+
+async def test_persist_ranks_by_analyst_confluence(session: AsyncSession):
+    low = _ranked_candidate("AAA/USDT:USDT", 0.20)
+    high = _ranked_candidate("BBB/USDT:USDT", 0.70)
+    persisted = await persist_signals(session, [low, high])
+    order = [candidate_signal.candidate.symbol for candidate_signal, _ in persisted]
+    assert order == ["BBB/USDT:USDT", "AAA/USDT:USDT"]

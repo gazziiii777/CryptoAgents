@@ -71,6 +71,7 @@ def _build_signal_record(
         technical_bias=technical.signal_direction,
         technical_confidence=technical.confidence,
         confluence_score=synthesis.confluence_score,
+        analyst_confluence=synthesis.analyst_confluence,
         overall_bias=synthesis.overall_bias,
         has_conflict=synthesis.has_significant_conflict,
         synthesis_reasoning=synthesis.reasoning,

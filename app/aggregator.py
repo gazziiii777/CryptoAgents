@@ -82,6 +82,7 @@ def aggregate_signals(
     synthesis = SignalSynthesis(
         overall_bias=overall_bias,
         confluence_score=confluence_score,
+        analyst_confluence=confluence_score,
         has_significant_conflict=has_conflict,
         scores_by_analyst=votes,
         top_risks=risks,

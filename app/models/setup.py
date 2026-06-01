@@ -111,6 +111,7 @@ class FinalSignal(BaseModel):
     risk_reward: float
     valid_hours: int
     confluence_score: float
+    analyst_confluence: float = 0.0
     invalidation: str
     thesis: str
     key_risks: list[str]
