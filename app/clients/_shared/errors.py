@@ -28,6 +28,9 @@ def log_api_error(service: str, exc: BaseException, *, path: str | None = None) 
                 where,
                 service.upper(),
             )
+            from app.notifications.alerts import schedule_key_dead_alert
+
+            schedule_key_dead_alert(service)
             return
         if status == RATE_LIMIT_STATUS:
             logger.warning(

@@ -5,11 +5,12 @@ from typing import TypeVar
 import instructor
 from instructor.core import InstructorError
 from litellm import acompletion, completion_cost
-from openai import OpenAIError
+from openai import AuthenticationError, OpenAIError
 from pydantic import BaseModel, ValidationError
 
 from app.clients.llm.exceptions import LLMCompletionError
 from app.clients.llm.models import LLMUsage
+from app.notifications.alerts import notify_key_dead
 from core.settings import settings
 from core.constants.time import MS_PER_SECOND
 
@@ -38,6 +39,12 @@ def _api_key_for(model: str) -> str | None:
     if model.startswith(("openai/", "gpt")):
         return settings.OPENAI_API_KEY or None
     return None
+
+
+def _provider_name(model: str) -> str:
+    if model.startswith(("anthropic/", "claude")):
+        return "Anthropic"
+    return "OpenAI"
 
 
 def _extract_cost(raw: object) -> float:
@@ -99,6 +106,10 @@ class LLMClient:
             )
         except _COMPLETION_FAILURES as exc:
             logger.error("LLM completion failed model=%s: %s", routed, exc)
+            if isinstance(exc, AuthenticationError) or isinstance(
+                exc.__cause__, AuthenticationError
+            ):
+                await notify_key_dead(_provider_name(routed))
             raise LLMCompletionError(
                 f"LLM completion failed for {routed}: {exc}"
             ) from exc

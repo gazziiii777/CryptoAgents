@@ -157,6 +157,7 @@ class Settings(BaseSettings):
     TRAIL_DISTANCE_R: float = Field(default=1.0, gt=0.0, le=10.0)
     EXIT_TIMEFRAME: str = "15m"
     EXIT_CANDLE_LIMIT: int = Field(default=1000, ge=1, le=1500)
+    KEY_ALERT_COOLDOWN_S: int = Field(default=1800, ge=60, le=86400)
 
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
