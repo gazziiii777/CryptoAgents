@@ -1,5 +1,6 @@
 import logging
 from string import Template
+from typing import Literal
 
 from app.agents.setup.state import SetupState
 from app.llm_gateway.service import LLMService
@@ -33,7 +34,9 @@ _SHORT_TARGET_KINDS = frozenset({
 })
 
 
-def _validate_intent(intent: SetupIntent, direction: str) -> str | None:
+def _validate_intent(
+    intent: SetupIntent, direction: Literal["long", "short"]
+) -> str | None:
     """Проверка направленной согласованности reference'ов. None = валидно."""
     if intent.direction != direction:
         return f"direction must be '{direction}', got '{intent.direction}'"

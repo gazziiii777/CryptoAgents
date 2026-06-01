@@ -23,10 +23,12 @@ _DIRECTION_TO_SIDE = {"long": PositionSide.LONG, "short": PositionSide.SHORT}
 
 
 class PortfolioManager:
-    """4 pre-trade проверки + фикс-сайзинг (1% NAV) + открытие VirtualPosition.
+    """4 pre-trade проверки + маржинальный сайзинг + открытие VirtualPosition.
 
     Полностью детерминированный (Python для всех правил риска). Порядок проверок:
     drawdown breaker → slot/направление → symbol dedup → funding kill-switch.
+    Сайзинг маржинальный: margin_pct интерполируется по analyst_confluence, плечо —
+    по setup_type/leverage_intent (см. compute_qty_by_margin / confidence_risk_pct).
     """
 
     def __init__(self, session: AsyncSession) -> None:

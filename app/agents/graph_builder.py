@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from pydantic import BaseModel
 
 from app.agents.models import GraphConfig
 
@@ -20,7 +21,7 @@ def load_graph_config(path: Path) -> GraphConfig:
 def build_graph(
     config: GraphConfig,
     *,
-    state_schema: type,
+    state_schema: type[BaseModel],
     nodes: Mapping[str, Callable[..., object]],
     conditions: Mapping[str, Callable[..., str]],
 ) -> CompiledStateGraph:

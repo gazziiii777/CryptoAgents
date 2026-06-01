@@ -1,5 +1,6 @@
 import logging
 from string import Template
+from typing import Literal
 
 from app.models.analysis import DerivativesReport
 from core.prompts.loader import load_prompt
@@ -16,7 +17,9 @@ def _ratio(value: float | None) -> str:
     return f"{value:.2f}" if value is not None else "n/a"
 
 
-def classify_funding_squeeze_risk(funding_rate: float) -> str:
+def classify_funding_squeeze_risk(
+    funding_rate: float,
+) -> Literal["high", "moderate", "none"]:
     """Контрарный риск сквиза по экстремальности funding.
 
     |rate| >= FUNDING_EXTREME_PCT → 'high' (толпа перегружена, вероятен каскад

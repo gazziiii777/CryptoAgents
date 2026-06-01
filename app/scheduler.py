@@ -65,7 +65,7 @@ def _install_stop_handlers(stop: asyncio.Event) -> None:
         try:
             loop.add_signal_handler(sig, stop.set)
         except NotImplementedError:
-            signal.signal(sig, lambda *_: stop.set())
+            signal.signal(sig, lambda *_: loop.call_soon_threadsafe(stop.set))
 
 
 async def run_forever(symbol_limit: int | None = None) -> None:

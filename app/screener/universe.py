@@ -40,8 +40,8 @@ async def get_liquid_perp_pairs(
 
 
 def _filter_perp_pairs(
-    markets: dict[str, Any],
-    tickers: dict[str, Any],
+    markets: dict[str, dict[str, Any]],
+    tickers: dict[str, dict[str, Any]],
     quote_currency: str,
     min_volume_usd: float,
 ) -> list[str]:

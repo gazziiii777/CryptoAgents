@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 
 from app.aggregator import aggregate_signals
@@ -189,7 +189,7 @@ async def _analyze_candidate(
         service, synthesis, technical, candidate, candles_4h, candles_1d
     )
     bar_close_ts = datetime.fromtimestamp(
-        candles_4h[-1].timestamp / MS_PER_SECOND, tz=timezone.utc
+        candles_4h[-1].timestamp / MS_PER_SECOND, tz=UTC
     )
     return CandidateSignal(
         candidate=candidate,

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from string import Template
+from typing import Literal
 
 from app.llm_gateway.service import LLMService
 from app.models.analysis import (
@@ -47,7 +48,7 @@ def _reports_block(
 
 
 async def _research_case(
-    service: LLMService, side: str, symbol: str, reports: str
+    service: LLMService, side: Literal["bull", "bear"], symbol: str, reports: str
 ) -> ResearchCase:
     prompt = load_prompt(side)
     return await service.structured(

@@ -361,18 +361,21 @@ def calc_oi_trend(
     return "neutral"
 
 
+def _classify_avg_funding(avg: float) -> FundingBias:
+    if avg >= settings.FUNDING_RATE_HIGH:
+        return "long_heavy"
+    if avg <= settings.FUNDING_RATE_LOW:
+        return "short_heavy"
+    return "neutral"
+
+
 def calc_funding_bias(funding_history: list[FundingRateHistoryEntry]) -> FundingBias:
     """Средняя ставка финансирования за всю историю: 'long_heavy', 'short_heavy' или 'neutral'."""
     if not funding_history:
         return "neutral"
 
     avg = sum(e.funding_rate for e in funding_history) / len(funding_history)
-
-    if avg >= settings.FUNDING_RATE_HIGH:
-        return "long_heavy"
-    if avg <= settings.FUNDING_RATE_LOW:
-        return "short_heavy"
-    return "neutral"
+    return _classify_avg_funding(avg)
 
 
 def calc_cvd_trend(cvd_points: list[CVDPoint]) -> CvdTrend:
@@ -418,15 +421,13 @@ def calc_cvd_price_divergence(
     return None
 
 
-def calc_liquidation_spike(
-    liq_history: list[LiquidationHistoryPoint],
-    window: int = settings.LIQ_SPIKE_WINDOW,
-    multiplier: float = settings.LIQ_SPIKE_MULTIPLIER,
-) -> bool:
+def calc_liquidation_spike(liq_history: list[LiquidationHistoryPoint]) -> bool:
     """True если суммарные ликвидации последней свечи превышают multiplier × среднее за window свечей.
 
     Всплеск = каскадные стоп-ауты → потенциальный разворот или ускорение тренда.
     """
+    window = settings.LIQ_SPIKE_WINDOW
+    multiplier = settings.LIQ_SPIKE_MULTIPLIER
     if len(liq_history) < window + 1:
         return False
 
@@ -451,8 +452,4 @@ def calc_oi_weighted_funding_bias(funding_hist: list[FundingRateOHLC]) -> Fundin
     if not funding_hist:
         return "neutral"
     avg = sum(e.close for e in funding_hist) / len(funding_hist)
-    if avg >= settings.FUNDING_RATE_HIGH:
-        return "long_heavy"
-    if avg <= settings.FUNDING_RATE_LOW:
-        return "short_heavy"
-    return "neutral"
+    return _classify_avg_funding(avg)

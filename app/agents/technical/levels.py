@@ -17,6 +17,8 @@ def compute_facts(
     candles_4h: list[OHLCVCandle], candles_1d: list[OHLCVCandle]
 ) -> TechnicalFacts:
     """Считает уровни из свечей 4h/1d детерминированно (без LLM)."""
+    if not candles_4h or not candles_1d:
+        raise ValueError("compute_facts requires non-empty 4h and 1d candle series")
     closes = [c.close for c in candles_4h]
     recent = candles_4h[-_RECENT_LOOKBACK_4H:]
     prev_day = candles_1d[-2] if len(candles_1d) >= 2 else candles_1d[-1]

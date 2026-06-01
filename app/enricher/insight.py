@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.clients.lunarcrush.models import (
     CoinTimeSeriesPoint,
@@ -50,7 +50,7 @@ def derive_social_insight(
     now: datetime | None = None,
 ) -> SocialInsight:
     """Свернуть все LunarCrush-данные + scrap данные в SocialInsight."""
-    now_utc = now or datetime.now(timezone.utc)
+    now_utc = now or datetime.now(UTC)
 
     sources: list[str] = []
     if lc is not None:
@@ -272,5 +272,5 @@ def _news_polarity(post_sentiment: float | None) -> CatalystPolarity | None:
 def _aware(dt: datetime) -> datetime:
     """Гарантирует tz-aware datetime в UTC."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt

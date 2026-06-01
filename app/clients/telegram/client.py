@@ -25,7 +25,7 @@ class TelegramClient:
     def __init__(self) -> None:
         token = settings.TELEGRAM_BOT_TOKEN
         chat_id = settings.TELEGRAM_CHAT_ID
-        if token is None or chat_id is None:
+        if not token or not chat_id:
             raise TelegramError("Telegram credentials are not configured")
         self._chat_id = chat_id
         self._bot = Bot(
