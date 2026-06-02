@@ -1,6 +1,7 @@
 from datetime import timezone
 
 from app.clients.binance.liquidations import _parse as parse_binance
+from app.clients.bybit.liquidations import _parse as parse_bybit
 from app.clients.okx.liquidations import _parse as parse_okx
 from app.models.liquidations import NormalizedLiquidation
 from db.research.writer import _to_liquidation_row
@@ -72,6 +73,34 @@ def test_okx_parse_uses_pos_side_directly():
 def test_okx_parse_ignores_pong_and_acks():
     assert parse_okx("pong") == []
     assert parse_okx('{"event":"subscribe","arg":{}}') == []
+
+
+def _bybit_raw(position_side: str) -> str:
+    return (
+        '{"topic":"allLiquidation.BTCUSDT","type":"snapshot","ts":1,"data":'
+        '[{"T":' + str(_TRADE_TIME_MS) + ',"s":"BTCUSDT","S":"' + position_side + '",'
+        '"v":"2.0","p":"100.0"}]}'
+    )
+
+
+def test_bybit_buy_is_long_liquidation():
+    events = parse_bybit(_bybit_raw("Buy"))
+
+    assert len(events) == 1
+    assert events[0].exchange == "bybit"
+    assert events[0].liquidated_side == "long"
+    assert events[0].price == 100.0
+
+
+def test_bybit_sell_is_short_liquidation():
+    events = parse_bybit(_bybit_raw("Sell"))
+
+    assert events[0].liquidated_side == "short"
+
+
+def test_bybit_parse_ignores_non_liquidation_topics():
+    assert parse_bybit('{"op":"subscribe","success":true}') == []
+    assert parse_bybit('{"topic":"orderbook.1.BTCUSDT","data":{}}') == []
 
 
 def test_to_row_carries_exchange_and_notional():
