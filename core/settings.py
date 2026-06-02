@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     LIQUIDATION_BATCH_SIZE: int = Field(default=100, ge=1, le=10000)
     LIQUIDATION_FLUSH_INTERVAL_S: float = Field(default=10.0, ge=1.0, le=600.0)
     LIQUIDATION_RECONNECT_DELAY_S: float = Field(default=5.0, ge=1.0, le=300.0)
+    LIQUIDATION_BYBIT_RESUB_INTERVAL_S: float = Field(
+        default=21600.0, ge=300.0, le=86400.0
+    )
 
     COINGLASS_STARTUP_PLAN: bool = False
     COINGLASS_STANDARD_PLAN: bool = False

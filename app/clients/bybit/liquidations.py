@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -23,18 +24,20 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
 
     У Bybit нет общего потока — на каждом подключении тянем список linear
     USDT-перпов через ccxt и подписываемся на allLiquidation.{symbol} по всем
-    (батчами по 10 — лимит Bybit). На простое шлём {op:ping}. Битое сообщение
-    пропускается, поток не падает.
+    (батчами по 10 — лимит Bybit). Соединение пересоздаётся раз в RESUB_INTERVAL,
+    чтобы подхватить новые листинги (список символов берётся заново). На простое
+    шлём {op:ping}. Битое сообщение пропускается, поток не падает.
     """
     while True:
         try:
             symbols = await _linear_perp_ids()
+            deadline = time.monotonic() + settings.LIQUIDATION_BYBIT_RESUB_INTERVAL_S
             async with connect(_BYBIT_LINEAR_WS_URL, max_size=None) as ws:
                 await _subscribe_all(ws, symbols)
                 logger.info(
                     "bybit liquidation stream connected (%d symbols)", len(symbols)
                 )
-                async for event in _read(ws):
+                async for event in _read(ws, deadline):
                     yield event
         except Exception:
             logger.warning(
@@ -68,9 +71,15 @@ async def _subscribe_all(ws: ClientConnection, symbols: list[str]) -> None:
         await ws.send(json.dumps({"op": "subscribe", "args": topics}))
 
 
-async def _read(ws: ClientConnection) -> AsyncIterator[NormalizedLiquidation]:
-    """Читает сообщения, шлёт {op:ping} на простое (Bybit ждёт ping каждые ~20с)."""
-    while True:
+async def _read(
+    ws: ClientConnection, deadline: float
+) -> AsyncIterator[NormalizedLiquidation]:
+    """Читает сообщения до deadline, шлёт {op:ping} на простое (Bybit ждёт ping ~20с).
+
+    По достижении deadline выходит — внешний цикл переподключается и заново тянет
+    список символов, подхватывая новые листинги.
+    """
+    while time.monotonic() < deadline:
         try:
             raw = await asyncio.wait_for(ws.recv(), timeout=_IDLE_PING_TIMEOUT_S)
         except TimeoutError:
