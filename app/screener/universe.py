@@ -4,6 +4,7 @@ from typing import Any
 
 from app.clients.ccxt.client import make_exchange
 from app.clients.ccxt.models import CcxtMarket, CcxtTicker
+from core.constants.markets import EXCLUDED_BASE_SYMBOLS
 from core.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,12 @@ def _filter_perp_pairs(
         if not market.swap or market.quote != quote_currency or not market.active:
             continue
         if market.underlying_type != _CRYPTO_UNDERLYING_TYPE:
+            continue
+        if (
+            not market.base
+            or not market.base.isascii()
+            or market.base in EXCLUDED_BASE_SYMBOLS
+        ):
             continue
 
         volume_usd = CcxtTicker.model_validate(ticker_raw).quote_volume or 0.0

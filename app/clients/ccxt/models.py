@@ -7,6 +7,7 @@ class CcxtMarket(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 
     swap: bool = False
+    base: str = ""
     quote: str
     active: bool | None = None
     underlying_type: str | None = Field(
