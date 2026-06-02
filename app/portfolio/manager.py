@@ -146,4 +146,6 @@ class PortfolioManager:
                 "margin_pct": str(margin_pct),
             },
         )
-        await notify_position_opened(position, final_signal.confluence_score)
+        await notify_position_opened(
+            position, final_signal.confluence_score, account.equity
+        )

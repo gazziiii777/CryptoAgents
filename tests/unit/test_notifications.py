@@ -50,7 +50,7 @@ def _closed(exit_price: Decimal, reason: ExitReason, pnl: Decimal) -> VirtualPos
 
 @pytest.mark.unit
 def test_format_open_contains_key_fields() -> None:
-    text = _format_open(_position(), 0.52)
+    text = _format_open(_position(), 0.52, Decimal("2000"))
     assert "OPEN" in text
     assert "SHORT" in text
     assert "ESPORTS/USDT:USDT" in text
@@ -58,9 +58,17 @@ def test_format_open_contains_key_fields() -> None:
     assert "0.0391" in text
     assert "0.0335" in text
     assert "0.52" in text
-    assert "Размер:" in text
+    assert "Рискую:" in text
+    assert "Залог:" in text
     assert "186" in text
     assert "×5" in text
+
+
+@pytest.mark.unit
+def test_format_open_shows_risk_amount_and_share() -> None:
+    text = _format_open(_position(), 0.52, Decimal("2000"))
+    assert "9.50 USDT" in text
+    assert "% баланса" in text
 
 
 @pytest.mark.unit
@@ -116,7 +124,7 @@ async def test_notify_open_is_noop_when_disabled(
     client_cls = MagicMock()
     monkeypatch.setattr("app.notifications.positions.TelegramClient", client_cls)
 
-    await notify_position_opened(_position(), 0.52)
+    await notify_position_opened(_position(), 0.52, Decimal("2000"))
 
     client_cls.assert_not_called()
 

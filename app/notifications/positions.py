@@ -50,10 +50,23 @@ def _return_on_margin(position: VirtualPosition, realized_pnl: Decimal) -> str:
     return f", {realized_pnl / margin * _HUNDRED:+.1f}% маржи"
 
 
-def _format_open(position: VirtualPosition, confluence_score: float) -> str:
+def _risk_to_stop(position: VirtualPosition) -> Decimal:
+    return abs(position.entry_price - position.stop_price) * position.qty
+
+
+def _risk_share_of_balance(risk_amount: Decimal, balance: Decimal) -> str:
+    if balance <= 0:
+        return ""
+    return f" ({risk_amount / balance * _HUNDRED:.1f}% баланса)"
+
+
+def _format_open(
+    position: VirtualPosition, confluence_score: float, balance: Decimal
+) -> str:
     leverage = f"×{position.leverage}" if position.leverage else "×1"
     notional = position.notional or Decimal(0)
     margin = position.margin or Decimal(0)
+    risk_amount = _risk_to_stop(position)
     return (
         f"{_Labels.OPEN_HEADER}  {_side_label(position.side)} {leverage}\n"
         f"<b>{position.symbol}</b>\n"
@@ -62,7 +75,9 @@ def _format_open(position: VirtualPosition, confluence_score: float) -> str:
         f"({_pct(position.stop_price, position.entry_price)})\n"
         f"Target: <code>{_price(position.target_price)}</code> "
         f"({_pct(position.target_price, position.entry_price)})\n"
-        f"💵 Размер: <b>{notional:.2f} USDT</b>  плечо {leverage}  (маржа {margin:.2f} USDT)\n"
+        f"🛑 Рискую: <b>{risk_amount:.2f} USDT</b>"
+        f"{_risk_share_of_balance(risk_amount, balance)}  ·  плечо {leverage}\n"
+        f"💵 Залог: {margin:.2f} USDT  ·  размер {notional:.2f} USDT\n"
         f"Confluence: {confluence_score:.2f}"
     )
 
@@ -93,14 +108,14 @@ def _format_close(position: VirtualPosition, balance: Decimal) -> str:
 
 
 async def notify_position_opened(
-    position: VirtualPosition, confluence_score: float
+    position: VirtualPosition, confluence_score: float, balance: Decimal
 ) -> None:
     """Шлёт уведомление об открытии позиции в Telegram. Сбой не ломает торговлю."""
     if not settings.TELEGRAM_ENABLED:
         return
     try:
         async with TelegramClient() as client:
-            await client.send_message(_format_open(position, confluence_score))
+            await client.send_message(_format_open(position, confluence_score, balance))
     except Exception:
         logger.error("telegram: failed to notify open", exc_info=True)
 
