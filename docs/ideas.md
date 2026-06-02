@@ -45,12 +45,20 @@ divergence топ-трейдеров), снятым раз в 4h. Это реа�
 - ✅ **Прокси-карта ликвидности** (`app/liquidity/`) — observe-only, стены из стакана
   Binance + кластеры из volume profile. Пишется в лог скринера.
 - ✅ **Сборщик реальных ликвидаций** (`app/collector/`, сервис `collector` в compose)
-  — always-on ws → таблица `research.liquidation_event` (колонка `exchange`):
+  — always-on ws → таблица `research.liquidation_event` (колонка `exchange`),
+  все три на одном сервисе, по продьюсеру на биржу (падение одной не трогает другие):
   - **Binance** USD-M `!forceOrder@arr` (all-market firehose);
-  - **OKX** SWAP `liquidation-orders` (all-market firehose, сырой ws).
-  Bybit пропущен: нет общего потока, только по символам (фрагильно). Это сырьё для
-  **калибровки**: где ликвидации случаются на самом деле. ⚠️ notional_usd для OKX
-  приближённый (sz в контрактах), для калибровки по уровням цены это не критично.
+  - **OKX** SWAP `liquidation-orders` (all-market firehose, сырой ws);
+  - **Bybit** linear `allLiquidation.{symbol}` — общего потока нет, подписываемся
+    на все ~572 USDT-перпа на одном соединении (символы через ccxt, ре-подписка
+    при реконнекте, {op:ping} на простое).
+  Покрытие ~80% рынка. Это сырьё для **калибровки**: где ликвидации реально случаются.
+  ⚠️ Две тонкости в данных:
+  - notional_usd для OKX приближённый (sz в контрактах) — для калибровки по уровням
+    цены не критично;
+  - **сторона различается по биржам** (нормализована в `liquidated_side`): Binance
+    order-side (SELL=long), OKX `posSide` напрямую, Bybit position-side (Buy=long,
+    Sell=short — зеркально Binance). Сверено с офиц. доками, не перепутать.
 - ⏳ **Калибровка (веха):** когда накопится несколько недель `liquidation_event`,
   сравнить реальные кластеры ликвидаций с тем, что предсказывал прокси (узлы volume
   profile × тиры плеч), и подогнать распределение плеч / веса.
