@@ -4,8 +4,11 @@ import logging
 from app.clients.binance.client import BinanceClient
 from app.clients.binance.models import OISnapshot
 from app.clients.ccxt.client import CcxtClient
+from app.clients.ccxt.models import OHLCVCandle
 from app.clients.coinglass.client import CoinGlassClient
 from app.clients.coinglass.exceptions import CoinGlassAPIError, CoinGlassAuthError
+from app.liquidity.builder import build_liquidity_map
+from app.models.liquidity import LiquidityMap
 from app.screener.criteria import (
     classify_smart_money_divergence,
     compute_direction,
@@ -185,6 +188,8 @@ async def evaluate_symbol(
         direction,
     )
 
+    liquidity_map = await _build_liquidity(symbol, ccxt_client, candles_4h)
+
     return ScreenerResult(
         symbol=symbol,
         gate_passed=True,
@@ -192,4 +197,39 @@ async def evaluate_symbol(
         adx=adx,
         direction=direction,
         signals=signals,
+        liquidity_map=liquidity_map,
     )
+
+
+async def _build_liquidity(
+    symbol: str, ccxt_client: CcxtClient, candles_4h: list[OHLCVCandle]
+) -> LiquidityMap:
+    """Считает карту ликвидности (observe-only): стакан нефатально, кластеры из свечей.
+
+    Сбой фетча стакана не валит оценку символа — карта строится без стен.
+    """
+    order_book = None
+    try:
+        order_book = await ccxt_client.fetch_order_book(symbol)
+    except Exception:
+        logger.warning(
+            "evaluate_symbol: order book fetch failed for %s", symbol, exc_info=True
+        )
+    liquidity_map = build_liquidity_map(
+        symbol=symbol,
+        mark_price=candles_4h[-1].close,
+        candles=candles_4h,
+        order_book=order_book,
+    )
+    magnet_above = liquidity_map.nearest_magnet_above
+    magnet_below = liquidity_map.nearest_magnet_below
+    logger.info(
+        "liquidity: %s mark=%.6g walls=%d clusters=%d magnet_above=%s magnet_below=%s",
+        symbol,
+        liquidity_map.mark_price,
+        len(liquidity_map.walls),
+        len(liquidity_map.liq_clusters),
+        f"{magnet_above.price:.6g}" if magnet_above else "none",
+        f"{magnet_below.price:.6g}" if magnet_below else "none",
+    )
+    return liquidity_map

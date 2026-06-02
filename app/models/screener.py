@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.liquidity import LiquidityMap
+
 _FROZEN = ConfigDict(frozen=True, extra="ignore")
 
 EmaCross = Literal["golden", "death"]
@@ -55,6 +57,7 @@ class ScreenerResult(BaseModel):
     adx: float
     direction: Direction
     signals: SignalDetails
+    liquidity_map: LiquidityMap | None = None
 
 
 def empty_signals() -> SignalDetails:

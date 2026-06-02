@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     LIQ_SPIKE_WINDOW: int = 8
     LIQ_SPIKE_MULTIPLIER: float = 3.0
 
+    LIQUIDITY_ORDERBOOK_DEPTH: int = Field(default=100, ge=5, le=1000)
+    LIQUIDITY_WALL_SIZE_MULT: float = Field(default=5.0, ge=1.0, le=100.0)
+    LIQUIDITY_WALL_MIN_LEVELS: int = Field(default=10, ge=1, le=1000)
+    LIQUIDITY_PROFILE_WINDOW: int = Field(default=200, ge=10, le=1500)
+    LIQUIDITY_PROFILE_BINS: int = Field(default=50, ge=5, le=500)
+    LIQUIDITY_CLUSTER_BIN_PCT: float = Field(default=0.005, gt=0.0, le=0.1)
+    LIQUIDITY_TOP_CLUSTERS: int = Field(default=6, ge=1, le=50)
+
     COINGLASS_STARTUP_PLAN: bool = False
     COINGLASS_STANDARD_PLAN: bool = False
     COINGLASS_PROFESSIONAL_PLAN: bool = False

@@ -39,3 +39,17 @@ class FundingRateHistoryEntry(BaseModel):
 
     timestamp: int
     funding_rate: float
+
+
+class OrderBookLevel(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    price: float
+    amount: float
+
+
+class OrderBook(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="ignore")
+
+    bids: list[OrderBookLevel]
+    asks: list[OrderBookLevel]

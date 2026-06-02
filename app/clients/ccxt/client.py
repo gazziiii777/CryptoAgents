@@ -3,7 +3,12 @@ from typing import Self
 
 import ccxt.async_support as ccxt
 
-from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
+from app.clients.ccxt.models import (
+    FundingRateHistoryEntry,
+    OHLCVCandle,
+    OrderBook,
+    OrderBookLevel,
+)
 from core.constants.time import MS_PER_SECOND
 from core.settings import settings
 
@@ -75,3 +80,19 @@ class CcxtClient:
             )
             for record in raw
         ]
+
+    async def fetch_order_book(
+        self, symbol: str, depth: int = settings.LIQUIDITY_ORDERBOOK_DEPTH
+    ) -> OrderBook:
+        """L2-стакан: bids/asks как [price, amount], отсортированы от лучшей цены."""
+        raw = await self._exchange.fetch_order_book(symbol, limit=depth)
+        return OrderBook(
+            bids=[
+                OrderBookLevel(price=float(price), amount=float(amount))
+                for price, amount in raw["bids"]
+            ],
+            asks=[
+                OrderBookLevel(price=float(price), amount=float(amount))
+                for price, amount in raw["asks"]
+            ],
+        )
