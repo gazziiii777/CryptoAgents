@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from app.clients.ccxt.models import OHLCVCandle
-from app.models.liquidity import LiquidityLevel
+from app.models.liquidity import LiquidityKind, LiquidityLevel
 from core.constants.liquidity import LEVERAGE_TIERS
 from core.settings import settings
 
@@ -11,17 +11,23 @@ def estimate_liquidation_clusters(
 ) -> list[LiquidityLevel]:
     """Прокси-кластеры ликвидаций из volume profile.
 
-    Узлы объёма = зоны входа толпы. Для каждого узла и каждого плечевого тира
-    считаем цену ликвидации лонгов/шортов, копим веса в ценовой сетке. Самые
-    плотные бины — магниты, к которым тянет цену снимать стопы. Кластеры выше
-    mark_price помечаются как short_liq (топливо вверх), ниже — long_liq (вниз).
+    Узлы объёма = зоны входа толпы. Для каждого узла и плечевого тира считаем цену
+    ликвидации лонгов (ниже узла) и шортов (выше узла) в РАЗДЕЛЬНЫЕ ценовые сетки,
+    чтобы kind отражал природу ликвидации (что сливается), а не положение бина
+    относительно mark. Самые плотные бины — магниты, к которым тянет цену снимать
+    стопы. Сила нормирована по общему максимуму, чтобы long/short сравнивались.
     """
     nodes = _volume_profile(candles)
     if not nodes or mark_price <= 0:
         return []
     step = mark_price * settings.LIQUIDITY_CLUSTER_BIN_PCT
-    densities = _accumulate(nodes, step)
-    return _top_clusters(densities, step, mark_price)
+    long_liq, short_liq = _accumulate(nodes, step)
+    max_weight = max([*long_liq.values(), *short_liq.values()], default=0.0)
+    if max_weight <= 0:
+        return []
+    return _top_clusters(
+        long_liq, "long_liq_cluster", step, max_weight
+    ) + _top_clusters(short_liq, "short_liq_cluster", step, max_weight)
 
 
 def _volume_profile(candles: list[OHLCVCandle]) -> list[tuple[float, float]]:
@@ -42,34 +48,33 @@ def _volume_profile(candles: list[OHLCVCandle]) -> list[tuple[float, float]]:
     return [(low + (index + 0.5) * width, volume) for index, volume in buckets.items()]
 
 
-def _accumulate(nodes: list[tuple[float, float]], step: float) -> dict[int, float]:
-    densities: dict[int, float] = defaultdict(float)
+def _accumulate(
+    nodes: list[tuple[float, float]], step: float
+) -> tuple[dict[int, float], dict[int, float]]:
+    long_liq: dict[int, float] = defaultdict(float)
+    short_liq: dict[int, float] = defaultdict(float)
     tier_weight = 1.0 / len(LEVERAGE_TIERS)
     for node_price, volume in nodes:
         for tier in LEVERAGE_TIERS:
             inverse_leverage = 1.0 / tier
-            long_liq = node_price * (1.0 - inverse_leverage)
-            short_liq = node_price * (1.0 + inverse_leverage)
-            densities[round(long_liq / step)] += volume * tier_weight
-            densities[round(short_liq / step)] += volume * tier_weight
-    return densities
+            long_liq[round(node_price * (1.0 - inverse_leverage) / step)] += (
+                volume * tier_weight
+            )
+            short_liq[round(node_price * (1.0 + inverse_leverage) / step)] += (
+                volume * tier_weight
+            )
+    return long_liq, short_liq
 
 
 def _top_clusters(
-    densities: dict[int, float], step: float, mark_price: float
+    densities: dict[int, float], kind: LiquidityKind, step: float, max_weight: float
 ) -> list[LiquidityLevel]:
-    if not densities:
-        return []
-    max_weight = max(densities.values())
-    if max_weight <= 0:
-        return []
     ranked = sorted(densities.items(), key=lambda item: item[1], reverse=True)
     clusters: list[LiquidityLevel] = []
     for index, weight in ranked[: settings.LIQUIDITY_TOP_CLUSTERS]:
         price = index * step
-        if price <= 0 or price == mark_price:
+        if price <= 0:
             continue
-        kind = "short_liq_cluster" if price > mark_price else "long_liq_cluster"
         clusters.append(
             LiquidityLevel(price=price, kind=kind, strength=weight / max_weight)
         )

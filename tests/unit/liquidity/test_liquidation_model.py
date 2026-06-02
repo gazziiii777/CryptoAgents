@@ -37,6 +37,17 @@ def test_strength_normalized_to_one():
     assert max(c.strength for c in clusters) == 1.0
 
 
+def test_kind_reflects_source_not_mark_position():
+    candles = _spread_with_node(200.0, 500.0)
+
+    clusters = estimate_liquidation_clusters(candles, mark_price=100.0)
+
+    long_above_mark = [
+        c for c in clusters if c.kind == "long_liq_cluster" and c.price > 100.0
+    ]
+    assert long_above_mark
+
+
 def test_empty_candles_yield_no_clusters():
     assert estimate_liquidation_clusters([], mark_price=100.0) == []
 
