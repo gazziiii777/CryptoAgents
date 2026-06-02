@@ -60,7 +60,7 @@ def _okx_raw(pos_side: str) -> str:
 
 
 def test_okx_parse_uses_pos_side_directly():
-    events = parse_okx(_okx_raw("long"))
+    events = parse_okx(_okx_raw("long"), {})
 
     assert len(events) == 1
     assert events[0].exchange == "okx"
@@ -70,9 +70,15 @@ def test_okx_parse_uses_pos_side_directly():
     assert events[0].quantity == 3.0
 
 
+def test_okx_applies_contract_size_to_quantity():
+    events = parse_okx(_okx_raw("long"), {"BTC-USDT-SWAP": 0.01})
+
+    assert events[0].quantity == 0.03
+
+
 def test_okx_parse_ignores_pong_and_acks():
-    assert parse_okx("pong") == []
-    assert parse_okx('{"event":"subscribe","arg":{}}') == []
+    assert parse_okx("pong", {}) == []
+    assert parse_okx('{"event":"subscribe","arg":{}}', {}) == []
 
 
 def _bybit_raw(position_side: str) -> str:

@@ -4,6 +4,8 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
+import ccxt.async_support as ccxt
+from pydantic import ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
 from app.models.liquidations import NormalizedLiquidation
@@ -22,15 +24,18 @@ _IDLE_PING_TIMEOUT_S = 20.0
 async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
     """Бесконечный стрим ликвидаций OKX SWAP (all-market) с авто-реконнектом.
 
-    Канал liquidation-orders instType=SWAP отдаёт все ликвидации одной подпиской.
-    При обрыве логирует, ждёт RECONNECT_DELAY и переподключается заново.
+    На каждом подключении тянет contractSize по инструментам (OKX отдаёт sz в
+    контрактах, qty в базовой валюте = sz × contractSize). Встроенный keepalive
+    websockets отключён (ping_interval=None) — OKX ждёт app-level 'ping', держим
+    только его, чтобы не было ложных реконнектов от двух механизмов.
     """
     while True:
         try:
-            async with connect(_OKX_PUBLIC_WS_URL) as ws:
+            contract_sizes = await _swap_contract_sizes()
+            async with connect(_OKX_PUBLIC_WS_URL, ping_interval=None) as ws:
                 await ws.send(_SUBSCRIBE_LIQUIDATIONS)
                 logger.info("okx liquidation stream connected")
-                async for event in _read(ws):
+                async for event in _read(ws, contract_sizes):
                     yield event
         except Exception:
             logger.warning(
@@ -39,7 +44,22 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
         await asyncio.sleep(settings.LIQUIDATION_RECONNECT_DELAY_S)
 
 
-async def _read(ws: ClientConnection) -> AsyncIterator[NormalizedLiquidation]:
+async def _swap_contract_sizes() -> dict[str, float]:
+    exchange = ccxt.okx({"options": {"defaultType": "swap"}})
+    try:
+        await exchange.load_markets()
+        return {
+            market["id"]: float(market["contractSize"])
+            for market in exchange.markets.values()
+            if market.get("swap") and market.get("contractSize")
+        }
+    finally:
+        await exchange.close()
+
+
+async def _read(
+    ws: ClientConnection, contract_sizes: dict[str, float]
+) -> AsyncIterator[NormalizedLiquidation]:
     """Читает сообщения, шлёт app-level 'ping' на простое (OKX рвёт после 30с тишины)."""
     while True:
         try:
@@ -47,11 +67,13 @@ async def _read(ws: ClientConnection) -> AsyncIterator[NormalizedLiquidation]:
         except TimeoutError:
             await ws.send("ping")
             continue
-        for event in _parse(raw):
+        for event in _parse(raw, contract_sizes):
             yield event
 
 
-def _parse(raw: str | bytes) -> list[NormalizedLiquidation]:
+def _parse(
+    raw: str | bytes, contract_sizes: dict[str, float]
+) -> list[NormalizedLiquidation]:
     if raw == "pong":
         return []
     try:
@@ -64,14 +86,19 @@ def _parse(raw: str | bytes) -> list[NormalizedLiquidation]:
     events: list[NormalizedLiquidation] = []
     for row in rows:
         inst_id = row.get("instId")
+        if not isinstance(inst_id, str):
+            continue
+        contract_size = contract_sizes.get(inst_id, 1.0)
         for detail in row.get("details", []):
-            event = _parse_detail(inst_id, detail)
+            event = _parse_detail(inst_id, detail, contract_size)
             if event is not None:
                 events.append(event)
     return events
 
 
-def _parse_detail(inst_id: str, detail: dict[str, Any]) -> NormalizedLiquidation | None:
+def _parse_detail(
+    inst_id: str, detail: dict[str, Any], contract_size: float
+) -> NormalizedLiquidation | None:
     try:
         return NormalizedLiquidation(
             exchange="okx",
@@ -79,8 +106,8 @@ def _parse_detail(inst_id: str, detail: dict[str, Any]) -> NormalizedLiquidation
             order_side=detail["side"],
             liquidated_side=detail["posSide"],
             price=float(detail["bkPx"]),
-            quantity=float(detail["sz"]),
+            quantity=float(detail["sz"]) * contract_size,
             trade_time_ms=int(detail["ts"]),
         )
-    except (KeyError, ValueError, TypeError):
+    except (KeyError, ValueError, TypeError, ValidationError):
         return None

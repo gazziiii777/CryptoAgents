@@ -222,6 +222,10 @@ async def _build_liquidity(
 
     Сбой фетча стакана не валит оценку символа — карта строится без стен.
     """
+    if not candles_4h:
+        return build_liquidity_map(
+            symbol=symbol, mark_price=0.0, candles=[], order_book=None
+        )
     order_book = None
     try:
         order_book = await ccxt_client.fetch_order_book(symbol)

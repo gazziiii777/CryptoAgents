@@ -24,12 +24,13 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
     отдельное сообщение пропускается, поток не падает.
     """
     while True:
-        client = await AsyncClient.create()
-        socket_manager = BinanceSocketManager(client)
-        socket = socket_manager.futures_multiplex_socket(
-            [_ALL_FORCE_ORDER_STREAM], futures_type=FuturesType.USD_M
-        )
+        client = None
         try:
+            client = await AsyncClient.create()
+            socket_manager = BinanceSocketManager(client)
+            socket = socket_manager.futures_multiplex_socket(
+                [_ALL_FORCE_ORDER_STREAM], futures_type=FuturesType.USD_M
+            )
             async with socket as stream:
                 logger.info("binance liquidation stream connected")
                 while True:
@@ -42,7 +43,8 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
                 "binance liquidation stream dropped, reconnecting", exc_info=True
             )
         finally:
-            await client.close_connection()
+            if client is not None:
+                await client.close_connection()
         await asyncio.sleep(settings.LIQUIDATION_RECONNECT_DELAY_S)
 
 

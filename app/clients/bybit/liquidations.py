@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import ccxt.async_support as ccxt
+from pydantic import ValidationError
 from websockets.asyncio.client import ClientConnection, connect
 
 from app.models.liquidations import NormalizedLiquidation
@@ -32,7 +33,9 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
         try:
             symbols = await _linear_perp_ids()
             deadline = time.monotonic() + settings.LIQUIDATION_BYBIT_RESUB_INTERVAL_S
-            async with connect(_BYBIT_LINEAR_WS_URL, max_size=None) as ws:
+            async with connect(
+                _BYBIT_LINEAR_WS_URL, max_size=None, ping_interval=None
+            ) as ws:
                 await _subscribe_all(ws, symbols)
                 logger.info(
                     "bybit liquidation stream connected (%d symbols)", len(symbols)
@@ -116,5 +119,5 @@ def _parse_row(row: dict[str, Any]) -> NormalizedLiquidation | None:
             quantity=float(row["v"]),
             trade_time_ms=int(row["T"]),
         )
-    except (KeyError, ValueError, TypeError):
+    except (KeyError, ValueError, TypeError, ValidationError):
         return None

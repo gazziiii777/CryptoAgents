@@ -24,23 +24,33 @@ async def run_collector() -> None:
     """
     queue: asyncio.Queue[NormalizedLiquidation] = asyncio.Queue()
     producers = [
-        asyncio.create_task(_drain(stream_binance(), queue)),
-        asyncio.create_task(_drain(stream_okx(), queue)),
-        asyncio.create_task(_drain(stream_bybit(), queue)),
+        asyncio.create_task(_drain(stream_binance(), queue, "binance")),
+        asyncio.create_task(_drain(stream_okx(), queue, "okx")),
+        asyncio.create_task(_drain(stream_bybit(), queue, "bybit")),
     ]
     try:
         await _consume(queue)
     finally:
         for producer in producers:
             producer.cancel()
+        await asyncio.gather(*producers, return_exceptions=True)
 
 
 async def _drain(
     stream: AsyncIterator[NormalizedLiquidation],
     queue: asyncio.Queue[NormalizedLiquidation],
+    exchange: str,
 ) -> None:
-    async for event in stream:
-        await queue.put(event)
+    try:
+        async for event in stream:
+            await queue.put(event)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.error(
+            "collector: %s producer stopped unexpectedly", exchange, exc_info=True
+        )
+        raise
 
 
 async def _consume(queue: asyncio.Queue[NormalizedLiquidation]) -> None:
