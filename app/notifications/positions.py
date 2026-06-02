@@ -62,7 +62,7 @@ def _format_open(position: VirtualPosition, confluence_score: float) -> str:
         f"({_pct(position.stop_price, position.entry_price)})\n"
         f"Target: <code>{_price(position.target_price)}</code> "
         f"({_pct(position.target_price, position.entry_price)})\n"
-        f"Size:   <b>{notional:.2f} USDT</b>  (маржа {margin:.2f}, плечо {leverage})\n"
+        f"💵 Размер: <b>{notional:.2f} USDT</b>  плечо {leverage}  (маржа {margin:.2f} USDT)\n"
         f"Confluence: {confluence_score:.2f}"
     )
 

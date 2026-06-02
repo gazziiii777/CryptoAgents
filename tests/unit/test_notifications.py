@@ -58,7 +58,7 @@ def test_format_open_contains_key_fields() -> None:
     assert "0.0391" in text
     assert "0.0335" in text
     assert "0.52" in text
-    assert "Size:" in text
+    assert "Размер:" in text
     assert "186" in text
     assert "×5" in text
 
