@@ -30,6 +30,7 @@ async def stream_liquidations() -> AsyncIterator[ForcedLiquidation]:
         )
         try:
             async with socket as stream:
+                logger.info("liquidation stream connected")
                 while True:
                     message = await stream.recv()
                     event = _parse(message)

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 
 from app.clients.binance.liquidations import stream_liquidations
 from app.clients.binance.models import ForcedLiquidation
@@ -13,9 +14,10 @@ async def run_collector() -> None:
     """Собирает поток ликвидаций Binance и пишет в research-БД батчами.
 
     Продьюсер держит ws-стрим и кладёт события в очередь; консьюмер флашит батч
-    по достижении BATCH_SIZE либо по таймауту FLUSH_INTERVAL (что раньше) — так
-    данные пишутся даже в тихие периоды. Очередь развязывает таймаут консьюмера
-    от ws-соединения: флаш по таймеру не рвёт стрим.
+    по достижении BATCH_SIZE либо по истечении FLUSH_INTERVAL с момента прошлого
+    флаша (что раньше) — так буфер не копится в памяти при ровном потоке и пишется
+    даже в тихие периоды. Очередь развязывает таймаут консьюмера от ws-соединения:
+    флаш по таймеру не рвёт стрим.
     """
     queue: asyncio.Queue[ForcedLiquidation] = asyncio.Queue()
     producer = asyncio.create_task(_produce(queue))
@@ -32,6 +34,7 @@ async def _produce(queue: asyncio.Queue[ForcedLiquidation]) -> None:
 
 async def _consume(queue: asyncio.Queue[ForcedLiquidation]) -> None:
     batch: list[ForcedLiquidation] = []
+    last_flush = time.monotonic()
     while True:
         try:
             event = await asyncio.wait_for(
@@ -41,8 +44,11 @@ async def _consume(queue: asyncio.Queue[ForcedLiquidation]) -> None:
             event = None
         if event is not None:
             batch.append(event)
-        idle_with_buffer = event is None and bool(batch)
-        if len(batch) >= settings.LIQUIDATION_BATCH_SIZE or idle_with_buffer:
+        flush_due = (
+            time.monotonic() - last_flush
+        ) >= settings.LIQUIDATION_FLUSH_INTERVAL_S
+        if batch and (len(batch) >= settings.LIQUIDATION_BATCH_SIZE or flush_due):
             await record_liquidations(batch)
             logger.info("liquidations: flushed %d events", len(batch))
             batch = []
+            last_flush = time.monotonic()
