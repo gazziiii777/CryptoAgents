@@ -15,7 +15,9 @@ from app.models.screener import (
     FundingBias,
     MacdSignal,
     OiTrend,
+    PositioningRegime,
     RsiDivergence,
+    SqueezeSetup,
     VwapBias,
 )
 from core.settings import settings
@@ -359,6 +361,57 @@ def calc_oi_trend(
     if change_pct <= -settings.OI_TREND_MIN_PCT:
         return "shrinking"
     return "neutral"
+
+
+def calc_positioning_regime(
+    candles_4h: list[OHLCVCandle], oi_history: list[OISnapshot]
+) -> PositioningRegime:
+    """Режим позиционирования по знакам изменения цены и OI за POSITIONING_LOOKBACK.
+
+    Цена↑ OI↑ — набирают лонги; цена↓ OI↑ — набирают шорты; цена↑ OI↓ — закрытие
+    шортов; цена↓ OI↓ — разгрузка лонгов. Малые изменения (ниже порогов) → neutral.
+    """
+    lookback = settings.POSITIONING_LOOKBACK
+    if len(candles_4h) < lookback + 1 or len(oi_history) < lookback + 1:
+        return "neutral"
+
+    base_price = candles_4h[-(lookback + 1)].close
+    base_oi = oi_history[-(lookback + 1)].open_interest
+    if base_price == 0 or base_oi == 0:
+        return "neutral"
+
+    price_change = (candles_4h[-1].close - base_price) / base_price
+    oi_change = (oi_history[-1].open_interest - base_oi) / base_oi
+    if (
+        abs(price_change) < settings.POSITIONING_PRICE_MIN_PCT
+        or abs(oi_change) < settings.POSITIONING_OI_MIN_PCT
+    ):
+        return "neutral"
+
+    price_up = price_change > 0
+    oi_up = oi_change > 0
+    if price_up and oi_up:
+        return "longs_building"
+    if not price_up and oi_up:
+        return "shorts_building"
+    if price_up and not oi_up:
+        return "shorts_covering"
+    return "longs_unwinding"
+
+
+def calc_squeeze_setup(
+    regime: PositioningRegime, funding_bias: FundingBias
+) -> SqueezeSetup:
+    """Заряженный сквиз: перегруженная сторона набрана И платит funding.
+
+    Лонги набираются при long_heavy funding → уязвимы к флешу вниз (long_squeeze).
+    Шорты набираются при short_heavy funding → уязвимы к сквизу вверх (short_squeeze).
+    """
+    if regime == "longs_building" and funding_bias == "long_heavy":
+        return "long_squeeze_primed"
+    if regime == "shorts_building" and funding_bias == "short_heavy":
+        return "short_squeeze_primed"
+    return "none"
 
 
 def _classify_avg_funding(avg: float) -> FundingBias:

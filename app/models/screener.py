@@ -19,6 +19,10 @@ Direction = Literal["long", "short", "mixed"]
 SmartMoneyDivergence = Literal[
     "confirms", "diverges_bullish", "diverges_bearish", "neutral"
 ]
+PositioningRegime = Literal[
+    "longs_building", "shorts_building", "shorts_covering", "longs_unwinding", "neutral"
+]
+SqueezeSetup = Literal["long_squeeze_primed", "short_squeeze_primed", "none"]
 
 
 class SignalDetails(BaseModel):
@@ -46,6 +50,8 @@ class SignalDetails(BaseModel):
     top_trader_ls_ratio: float | None
     basis: float | None
     smart_money_divergence: SmartMoneyDivergence = "neutral"
+    positioning_regime: PositioningRegime = "neutral"
+    squeeze_setup: SqueezeSetup = "none"
 
 
 class ScreenerResult(BaseModel):

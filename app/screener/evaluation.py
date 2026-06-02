@@ -28,8 +28,10 @@ from app.screener.indicators import (
     calc_near_swing,
     calc_oi_trend,
     calc_oi_weighted_funding_bias,
+    calc_positioning_regime,
     calc_rsi_divergence,
     calc_rsi_level,
+    calc_squeeze_setup,
     calc_volume_spike,
     calc_vwap_bias,
 )
@@ -149,6 +151,16 @@ async def evaluate_symbol(
     retail_ls = ls_hist[-1].long_short_ratio if ls_hist else None
     top_ls = top_ratio_hist[-1].long_short_ratio if top_ratio_hist else None
 
+    funding_bias = calc_funding_bias(funding_hist)
+    oi_weighted_funding_bias = calc_oi_weighted_funding_bias(oi_weighted_funding_hist)
+    positioning_regime = calc_positioning_regime(candles_4h, oi_hist)
+    effective_funding_bias = (
+        oi_weighted_funding_bias
+        if oi_weighted_funding_bias != "neutral"
+        else funding_bias
+    )
+    squeeze_setup = calc_squeeze_setup(positioning_regime, effective_funding_bias)
+
     signals = SignalDetails(
         atr=calc_atr(candles_4h),
         volume_spike=calc_volume_spike(candles_4h),
@@ -163,10 +175,8 @@ async def evaluate_symbol(
         oi_change_4h_pct=_calc_oi_change_4h(oi_hist),
         oi_trend=calc_oi_trend(oi_hist),
         funding_rate=funding_hist[-1].funding_rate if funding_hist else 0.0,
-        funding_bias=calc_funding_bias(funding_hist),
-        oi_weighted_funding_bias=calc_oi_weighted_funding_bias(
-            oi_weighted_funding_hist
-        ),
+        funding_bias=funding_bias,
+        oi_weighted_funding_bias=oi_weighted_funding_bias,
         long_short_ratio=retail_ls,
         cvd_trend=calc_cvd_trend(cvd),
         cvd_price_divergence=calc_cvd_price_divergence(candles_4h, cvd),
@@ -176,16 +186,20 @@ async def evaluate_symbol(
         smart_money_divergence=classify_smart_money_divergence(
             retail_ls, top_ls, settings.LS_RATIO_HIGH, settings.LS_RATIO_LOW
         ),
+        positioning_regime=positioning_regime,
+        squeeze_setup=squeeze_setup,
     )
 
     score = compute_score(signals)
     direction = compute_direction(signals)
     logger.info(
-        "evaluate_symbol: %s score=%d adx=%.1f direction=%s",
+        "evaluate_symbol: %s score=%d adx=%.1f direction=%s regime=%s squeeze=%s",
         symbol,
         score,
         adx,
         direction,
+        positioning_regime,
+        squeeze_setup,
     )
 
     liquidity_map = await _build_liquidity(symbol, ccxt_client, candles_4h)

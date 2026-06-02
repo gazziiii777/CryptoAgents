@@ -74,6 +74,10 @@ class Settings(BaseSettings):
 
     OI_TREND_MIN_PCT: float = 0.15
     OI_CHANGE_4H_SCORE_PCT: float = 0.05
+
+    POSITIONING_LOOKBACK: int = Field(default=6, ge=2, le=50)
+    POSITIONING_PRICE_MIN_PCT: float = Field(default=0.01, ge=0.0, le=1.0)
+    POSITIONING_OI_MIN_PCT: float = Field(default=0.02, ge=0.0, le=1.0)
     FUNDING_RATE_HIGH: float = 0.0015
     FUNDING_RATE_LOW: float = -0.0005
     LS_RATIO_HIGH: float = 3.3
