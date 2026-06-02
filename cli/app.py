@@ -3,7 +3,7 @@ import logging
 import typer
 
 from app.logger import setup_logging
-from cli.commands import keys_check, manage, pipeline, run, watch
+from cli.commands import collect, keys_check, manage, pipeline, run, watch
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -23,6 +23,7 @@ app.command("keys-check")(keys_check.keys_check)
 app.command("pipeline")(pipeline.pipeline)
 app.command("watch")(watch.watch)
 app.command("run")(run.run)
+app.command("collect-liquidations")(collect.collect_liquidations)
 app.command("account-create")(manage.account_create)
 app.command("halt-trading")(manage.halt_trading)
 app.command("resume-trading")(manage.resume_trading)

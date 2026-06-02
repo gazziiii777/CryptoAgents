@@ -76,6 +76,18 @@ services:
         condition: service_completed_successfully
         required: false
 
+  # Always-on сборщик ликвидаций Binance USD-M (ws !forceOrder@arr → research-БД).
+  # Отдельный сервис от worker: постоянный стрим 24/7, переживает рестарты воркера.
+  collector:
+    build: .
+    env_file: .env
+    command: ["collect-liquidations"]
+    restart: unless-stopped
+    stop_grace_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Периодический логический бэкап обеих БД (mariadb-dump → gzip) с ротацией.
   # Сайдкар: не зависит от worker. Дампы — на хосте в ./backups.
   backup:

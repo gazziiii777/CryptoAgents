@@ -25,3 +25,13 @@ class CVDPoint(BaseModel):
 
     timestamp: int
     cvd: float
+
+
+class ForcedLiquidation(BaseModel):
+    model_config = _FROZEN
+
+    symbol: str = Field(alias="s")
+    order_side: str = Field(alias="S")
+    price: float = Field(alias="ap")
+    quantity: float = Field(alias="z")
+    trade_time_ms: int = Field(alias="T")

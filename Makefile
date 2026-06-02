@@ -98,7 +98,7 @@ deploy: _require-host ## Залить код + перебилдить worker н�
 		--exclude='research/data/' \
 		--exclude='ReferenceTradingAgents/' \
 		./ $(SERVER_USER)@$(SERVER_HOST):$(SERVER_DIR)/
-	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build worker backup'
+	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build worker collector backup'
 	@echo "Deployed. Logs: make deploy.logs"
 
 deploy.migrate: _require-host ## Применить alembic upgrade head на проде (ОТДЕЛЬНО от deploy)

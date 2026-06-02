@@ -1,17 +1,18 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.clients.binance.models import ForcedLiquidation
 from app.models.analysis import CandidateSignal
-from core.constants.time import SECONDS_PER_HOUR
+from core.constants.time import MS_PER_SECOND, SECONDS_PER_HOUR
 from core.settings import settings
 from db.models import Signal, VirtualPosition
 from db.research.engine import research_session_scope
-from db.research.models import AgentOutput, SignalRecord, TradeOutcome
+from db.research.models import AgentOutput, LiquidationEvent, SignalRecord, TradeOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,33 @@ async def record_trade_outcome(
         logger.error(
             "research: failed to record outcome for %s", position.symbol, exc_info=True
         )
+
+
+async def record_liquidations(events: list[ForcedLiquidation]) -> None:
+    """Пишет батч событий ликвидаций в research-БД. Сбой не валит сборщик."""
+    if not events:
+        return
+    try:
+        async with research_session_scope() as session:
+            session.add_all([_to_liquidation_row(event) for event in events])
+    except Exception:
+        logger.error(
+            "research: failed to record %d liquidations", len(events), exc_info=True
+        )
+
+
+def _to_liquidation_row(event: ForcedLiquidation) -> LiquidationEvent:
+    return LiquidationEvent(
+        symbol=event.symbol,
+        order_side=event.order_side,
+        liquidated_side="long" if event.order_side == "SELL" else "short",
+        price=event.price,
+        quantity=event.quantity,
+        notional_usd=event.price * event.quantity,
+        trade_ts=datetime.fromtimestamp(
+            event.trade_time_ms / MS_PER_SECOND, tz=timezone.utc
+        ),
+    )
 
 
 async def _find_signal_record_meta(

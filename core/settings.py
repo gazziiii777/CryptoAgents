@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     LIQUIDITY_CLUSTER_BIN_PCT: float = Field(default=0.005, gt=0.0, le=0.1)
     LIQUIDITY_TOP_CLUSTERS: int = Field(default=6, ge=1, le=50)
 
+    LIQUIDATION_BATCH_SIZE: int = Field(default=100, ge=1, le=10000)
+    LIQUIDATION_FLUSH_INTERVAL_S: float = Field(default=10.0, ge=1.0, le=600.0)
+    LIQUIDATION_RECONNECT_DELAY_S: float = Field(default=5.0, ge=1.0, le=300.0)
+
     COINGLASS_STARTUP_PLAN: bool = False
     COINGLASS_STANDARD_PLAN: bool = False
     COINGLASS_PROFESSIONAL_PLAN: bool = False
