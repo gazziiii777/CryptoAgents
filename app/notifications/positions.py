@@ -43,8 +43,17 @@ def _r_multiple(position: VirtualPosition, realized_pnl: Decimal) -> str:
     return f"{realized_pnl / risk:+.2f}R"
 
 
+def _return_on_margin(position: VirtualPosition, realized_pnl: Decimal) -> str:
+    margin = position.margin or Decimal(0)
+    if margin == 0:
+        return ""
+    return f", {realized_pnl / margin * _HUNDRED:+.1f}% маржи"
+
+
 def _format_open(position: VirtualPosition, confluence_score: float) -> str:
-    leverage = f"×{position.leverage}" if position.leverage else ""
+    leverage = f"×{position.leverage}" if position.leverage else "×1"
+    notional = position.notional or Decimal(0)
+    margin = position.margin or Decimal(0)
     return (
         f"{_Labels.OPEN_HEADER}  {_side_label(position.side)} {leverage}\n"
         f"<b>{position.symbol}</b>\n"
@@ -53,6 +62,7 @@ def _format_open(position: VirtualPosition, confluence_score: float) -> str:
         f"({_pct(position.stop_price, position.entry_price)})\n"
         f"Target: <code>{_price(position.target_price)}</code> "
         f"({_pct(position.target_price, position.entry_price)})\n"
+        f"Size:   <b>{notional:.2f} USDT</b>  (маржа {margin:.2f}, плечо {leverage})\n"
         f"Confluence: {confluence_score:.2f}"
     )
 
@@ -74,7 +84,9 @@ def _format_close(position: VirtualPosition, balance: Decimal) -> str:
         f"Entry → Exit: <code>{_price(position.entry_price)}</code> → "
         f"<code>{_price(exit_price)}</code> "
         f"({_pct(exit_price, position.entry_price)})\n"
-        f"PnL: <b>{realized_pnl:+.2f} USDT</b>  ({_r_multiple(position, realized_pnl)})\n"
+        f"PnL: <b>{realized_pnl:+.2f} USDT</b>  "
+        f"({_r_multiple(position, realized_pnl)}"
+        f"{_return_on_margin(position, realized_pnl)})\n"
         f"Hold: {_holding_hours(position):.1f}h\n"
         f"Balance: {balance:.2f} USDT"
     )

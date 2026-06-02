@@ -29,6 +29,7 @@ def _position(**overrides: object) -> VirtualPosition:
         entry_price=Decimal("0.0372"),
         qty=Decimal("5000"),
         notional=Decimal("186"),
+        margin=Decimal("37.2"),
         leverage=5,
         stop_price=Decimal("0.0391"),
         target_price=Decimal("0.0335"),
@@ -57,6 +58,9 @@ def test_format_open_contains_key_fields() -> None:
     assert "0.0391" in text
     assert "0.0335" in text
     assert "0.52" in text
+    assert "Size:" in text
+    assert "186" in text
+    assert "×5" in text
 
 
 @pytest.mark.unit
@@ -67,7 +71,8 @@ def test_format_close_win_shows_positive_pnl_and_r() -> None:
     )
     assert "WIN" in text
     assert "+29.12 USDT" in text
-    assert "R)" in text
+    assert "R," in text
+    assert "% маржи" in text
     assert "Balance: 2094.39 USDT" in text
     assert "(target)" in text
 
