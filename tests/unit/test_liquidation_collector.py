@@ -1,13 +1,14 @@
 from datetime import timezone
 
-from app.clients.binance.liquidations import _parse
-from app.clients.binance.models import ForcedLiquidation
+from app.clients.binance.liquidations import _parse as parse_binance
+from app.clients.okx.liquidations import _parse as parse_okx
+from app.models.liquidations import NormalizedLiquidation
 from db.research.writer import _to_liquidation_row
 
 _TRADE_TIME_MS = 1568014460893
 
 
-def _message(side: str) -> dict[str, object]:
+def _binance_message(side: str) -> dict[str, object]:
     return {
         "stream": "!forceOrder@arr",
         "data": {
@@ -25,43 +26,60 @@ def _message(side: str) -> dict[str, object]:
     }
 
 
-def test_parse_extracts_forced_liquidation():
-    event = _parse(_message("SELL"))
+def test_binance_parse_maps_sell_to_long_liquidation():
+    event = parse_binance(_binance_message("SELL"))
 
     assert event is not None
+    assert event.exchange == "binance"
     assert event.symbol == "BTCUSDT"
-    assert event.order_side == "SELL"
+    assert event.liquidated_side == "long"
     assert event.price == 100.0
     assert event.quantity == 2.0
-    assert event.trade_time_ms == _TRADE_TIME_MS
 
 
-def test_parse_returns_none_on_malformed_message():
-    assert _parse({}) is None
-    assert _parse({"data": {}}) is None
-    assert _parse({"data": {"o": "not-a-dict"}}) is None
+def test_binance_parse_maps_buy_to_short_liquidation():
+    event = parse_binance(_binance_message("BUY"))
+
+    assert event is not None
+    assert event.liquidated_side == "short"
 
 
-def test_sell_order_maps_to_long_liquidation():
-    event = ForcedLiquidation(
-        symbol="BTCUSDT",
-        order_side="SELL",
-        price=100.0,
-        quantity=2.0,
-        trade_time_ms=_TRADE_TIME_MS,
+def test_binance_parse_returns_none_on_malformed_message():
+    assert parse_binance({}) is None
+    assert parse_binance({"data": {}}) is None
+    assert parse_binance({"data": {"o": "not-a-dict"}}) is None
+
+
+def _okx_raw(pos_side: str) -> str:
+    return (
+        '{"arg":{"channel":"liquidation-orders"},"data":[{"instId":"BTC-USDT-SWAP",'
+        '"details":[{"posSide":"' + pos_side + '","side":"sell","sz":"3.0",'
+        '"bkPx":"50.0","ts":"' + str(_TRADE_TIME_MS) + '"}]}]}'
     )
 
-    row = _to_liquidation_row(event)
 
-    assert row.liquidated_side == "long"
-    assert row.notional_usd == 200.0
-    assert row.trade_ts.tzinfo == timezone.utc
+def test_okx_parse_uses_pos_side_directly():
+    events = parse_okx(_okx_raw("long"))
+
+    assert len(events) == 1
+    assert events[0].exchange == "okx"
+    assert events[0].symbol == "BTC-USDT-SWAP"
+    assert events[0].liquidated_side == "long"
+    assert events[0].price == 50.0
+    assert events[0].quantity == 3.0
 
 
-def test_buy_order_maps_to_short_liquidation():
-    event = ForcedLiquidation(
-        symbol="BTCUSDT",
-        order_side="BUY",
+def test_okx_parse_ignores_pong_and_acks():
+    assert parse_okx("pong") == []
+    assert parse_okx('{"event":"subscribe","arg":{}}') == []
+
+
+def test_to_row_carries_exchange_and_notional():
+    event = NormalizedLiquidation(
+        exchange="okx",
+        symbol="BTC-USDT-SWAP",
+        order_side="sell",
+        liquidated_side="long",
         price=50.0,
         quantity=3.0,
         trade_time_ms=_TRADE_TIME_MS,
@@ -69,5 +87,7 @@ def test_buy_order_maps_to_short_liquidation():
 
     row = _to_liquidation_row(event)
 
-    assert row.liquidated_side == "short"
+    assert row.exchange == "okx"
+    assert row.liquidated_side == "long"
     assert row.notional_usd == 150.0
+    assert row.trade_ts.tzinfo == timezone.utc

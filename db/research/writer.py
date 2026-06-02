@@ -6,8 +6,8 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.binance.models import ForcedLiquidation
 from app.models.analysis import CandidateSignal
+from app.models.liquidations import NormalizedLiquidation
 from core.constants.time import MS_PER_SECOND, SECONDS_PER_HOUR
 from core.settings import settings
 from db.models import Signal, VirtualPosition
@@ -203,8 +203,8 @@ async def record_trade_outcome(
         )
 
 
-async def record_liquidations(events: list[ForcedLiquidation]) -> None:
-    """Пишет батч событий ликвидаций в research-БД. Сбой не валит сборщик."""
+async def record_liquidations(events: list[NormalizedLiquidation]) -> None:
+    """Пишет батч событий ликвидаций (любая биржа) в research-БД. Сбой не валит сборщик."""
     if not events:
         return
     try:
@@ -216,11 +216,12 @@ async def record_liquidations(events: list[ForcedLiquidation]) -> None:
         )
 
 
-def _to_liquidation_row(event: ForcedLiquidation) -> LiquidationEvent:
+def _to_liquidation_row(event: NormalizedLiquidation) -> LiquidationEvent:
     return LiquidationEvent(
+        exchange=event.exchange,
         symbol=event.symbol,
         order_side=event.order_side,
-        liquidated_side="long" if event.order_side == "SELL" else "short",
+        liquidated_side=event.liquidated_side,
         price=event.price,
         quantity=event.quantity,
         notional_usd=event.price * event.quantity,

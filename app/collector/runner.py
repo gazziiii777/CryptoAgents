@@ -1,9 +1,11 @@
 import asyncio
 import logging
 import time
+from collections.abc import AsyncIterator
 
-from app.clients.binance.liquidations import stream_liquidations
-from app.clients.binance.models import ForcedLiquidation
+from app.clients.binance.liquidations import stream_liquidations as stream_binance
+from app.clients.okx.liquidations import stream_liquidations as stream_okx
+from app.models.liquidations import NormalizedLiquidation
 from core.settings import settings
 from db.research.writer import record_liquidations
 
@@ -11,29 +13,36 @@ logger = logging.getLogger(__name__)
 
 
 async def run_collector() -> None:
-    """Собирает поток ликвидаций Binance и пишет в research-БД батчами.
+    """Собирает потоки ликвидаций Binance + OKX и пишет в research-БД батчами.
 
-    Продьюсер держит ws-стрим и кладёт события в очередь; консьюмер флашит батч
+    По продьюсеру на биржу кладут события в общую очередь; консьюмер флашит батч
     по достижении BATCH_SIZE либо по истечении FLUSH_INTERVAL с момента прошлого
     флаша (что раньше) — так буфер не копится в памяти при ровном потоке и пишется
-    даже в тихие периоды. Очередь развязывает таймаут консьюмера от ws-соединения:
-    флаш по таймеру не рвёт стрим.
+    даже в тихие периоды. Очередь развязывает таймаут консьюмера от ws-соединений:
+    флаш по таймеру не рвёт стримы, падение одной биржи не трогает другую.
     """
-    queue: asyncio.Queue[ForcedLiquidation] = asyncio.Queue()
-    producer = asyncio.create_task(_produce(queue))
+    queue: asyncio.Queue[NormalizedLiquidation] = asyncio.Queue()
+    producers = [
+        asyncio.create_task(_drain(stream_binance(), queue)),
+        asyncio.create_task(_drain(stream_okx(), queue)),
+    ]
     try:
         await _consume(queue)
     finally:
-        producer.cancel()
+        for producer in producers:
+            producer.cancel()
 
 
-async def _produce(queue: asyncio.Queue[ForcedLiquidation]) -> None:
-    async for event in stream_liquidations():
+async def _drain(
+    stream: AsyncIterator[NormalizedLiquidation],
+    queue: asyncio.Queue[NormalizedLiquidation],
+) -> None:
+    async for event in stream:
         await queue.put(event)
 
 
-async def _consume(queue: asyncio.Queue[ForcedLiquidation]) -> None:
-    batch: list[ForcedLiquidation] = []
+async def _consume(queue: asyncio.Queue[NormalizedLiquidation]) -> None:
+    batch: list[NormalizedLiquidation] = []
     last_flush = time.monotonic()
     while True:
         try:

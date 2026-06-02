@@ -18,6 +18,7 @@ class LiquidationEvent(ResearchBase):
     __tablename__ = "liquidation_event"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    exchange: Mapped[str] = mapped_column(String(16), index=True, default="binance")
     symbol: Mapped[str] = mapped_column(String(32), index=True)
     order_side: Mapped[str] = mapped_column(String(8))
     liquidated_side: Mapped[str] = mapped_column(String(8), index=True)
