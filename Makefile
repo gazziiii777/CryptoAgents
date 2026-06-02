@@ -2,7 +2,8 @@
 
 .PHONY: help install lint format format.check typecheck test test.cov test.integration check clean \
         logs restart rebuild shell db.shell db.url migration nuke init-migration \
-        deploy deploy.migrate deploy.logs deploy.status deploy.shell deploy.down
+        deploy deploy.migrate deploy.logs deploy.logs.agent deploy.logs.collector \
+        deploy.status deploy.shell deploy.down
 
 # Подгружаем локальные overrides (IP сервера, юзер) если есть — gitignored
 -include .make.local
@@ -106,6 +107,12 @@ deploy.migrate: _require-host ## Применить alembic upgrade head на п
 
 deploy.logs: _require-host ## Tail worker logs на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f worker'
+
+deploy.logs.agent: _require-host ## Логи торгового агента (worker) на проде
+	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f worker'
+
+deploy.logs.collector: _require-host ## Логи сборщика ликвидаций (collector) на проде
+	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f collector'
 
 deploy.status: _require-host ## docker compose ps на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose ps'
