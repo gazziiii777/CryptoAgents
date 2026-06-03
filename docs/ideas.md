@@ -82,8 +82,12 @@ divergence топ-трейдеров), снятым раз в 4h. Это реа�
   POSITIONING_LOOKBACK: longs_building / shorts_building / shorts_covering /
   longs_unwinding. Сквиз заряжен = перегруженная сторона набрана И платит funding.
   Пишется в лог `evaluate_symbol: ... regime=.. squeeze=..`. Данные уже были, дёшево.
-- ⏳ **Спот vs перп поток** — кит копит спот, пока ритейл шортит перп (или наоборот).
-  Нужен спот-CVD (Binance spot aggTrade) против перп-CVD. Сигнал расхождения на 4h.
+- ✅ **Спот vs перп поток** (`fetch_spot_cvd` + `calc_spot_perp_divergence`) — спот-CVD
+  по Binance spot-клайнам vs перп-CVD. bullish = спот копит, перп нет; bearish =
+  спот распределяет, перп нет. Лог `evaluate_symbol: ... spot_perp=..`. Observe-only.
+- ✅ **Дисбаланс стакана** (`calc_book_imbalance`) — (Σbid−Σask)/(Σbid+Σask) по top-N,
+  −1..+1. Из стакана, что уже тянем. Лог `liquidity: ... imbalance=..`. Observe-only.
+  Дешёвая часть order-flow; полная лента/спуфинг — ниже (C).
 - ⏳ **C — китовая лента / эволюция стакана** (быстрый контур, отдельный always-on
   вотчер): крупные агрессивные принты из aggTrade + появление/снятие стен (спуфинг),
   поглощение, дисбаланс bid/ask. Самый сильный «впереди кита», но другой таймфрейм
