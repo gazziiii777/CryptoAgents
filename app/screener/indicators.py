@@ -17,6 +17,7 @@ from app.models.screener import (
     OiTrend,
     PositioningRegime,
     RsiDivergence,
+    SpotPerpDivergence,
     SqueezeSetup,
     VwapBias,
 )
@@ -397,6 +398,26 @@ def calc_positioning_regime(
     if price_up and not oi_up:
         return "shorts_covering"
     return "longs_unwinding"
+
+
+def calc_spot_perp_divergence(
+    spot_cvd: list[CVDPoint], perp_cvd: list[CVDPoint]
+) -> SpotPerpDivergence:
+    """Расхождение спот↔перп потока (smart money vs ритейл).
+
+    Спот растёт (реальное накопление), а перп не растёт → bullish (умные деньги
+    берут спот). Спот падает (распределение), перп не падает → bearish. Нет
+    спот-данных или согласие сторон → none.
+    """
+    if not spot_cvd:
+        return "none"
+    spot_trend = calc_cvd_trend(spot_cvd)
+    perp_trend = calc_cvd_trend(perp_cvd)
+    if spot_trend == "rising" and perp_trend != "rising":
+        return "bullish"
+    if spot_trend == "falling" and perp_trend != "falling":
+        return "bearish"
+    return "none"
 
 
 def calc_squeeze_setup(

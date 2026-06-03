@@ -31,6 +31,7 @@ from app.screener.indicators import (
     calc_positioning_regime,
     calc_rsi_divergence,
     calc_rsi_level,
+    calc_spot_perp_divergence,
     calc_squeeze_setup,
     calc_volume_spike,
     calc_vwap_bias,
@@ -82,6 +83,7 @@ async def evaluate_symbol(
             oi_hist,
             ls_hist,
             cvd,
+            spot_cvd,
         ) = await asyncio.gather(
             ccxt_client.fetch_ohlcv(
                 symbol, timeframe="4h", limit=settings.SCREENER_4H_LIMIT
@@ -99,6 +101,7 @@ async def evaluate_symbol(
                 symbol, period="4h", limit=settings.SCREENER_LS_RATIO_LIMIT
             ),
             binance_client.fetch_cvd(symbol, num_candles=settings.CVD_CANDLES),
+            binance_client.fetch_spot_cvd(symbol, num_candles=settings.CVD_CANDLES),
         )
     except Exception:
         logger.error("evaluate_symbol: data fetch failed for %s", symbol, exc_info=True)
@@ -160,6 +163,7 @@ async def evaluate_symbol(
         else funding_bias
     )
     squeeze_setup = calc_squeeze_setup(positioning_regime, effective_funding_bias)
+    spot_perp_divergence = calc_spot_perp_divergence(spot_cvd, cvd)
 
     signals = SignalDetails(
         atr=calc_atr(candles_4h),
@@ -188,18 +192,20 @@ async def evaluate_symbol(
         ),
         positioning_regime=positioning_regime,
         squeeze_setup=squeeze_setup,
+        spot_perp_divergence=spot_perp_divergence,
     )
 
     score = compute_score(signals)
     direction = compute_direction(signals)
     logger.info(
-        "evaluate_symbol: %s score=%d adx=%.1f direction=%s regime=%s squeeze=%s",
+        "evaluate_symbol: %s score=%d adx=%.1f direction=%s regime=%s squeeze=%s spot_perp=%s",
         symbol,
         score,
         adx,
         direction,
         positioning_regime,
         squeeze_setup,
+        spot_perp_divergence,
     )
 
     liquidity_map = await _build_liquidity(symbol, ccxt_client, candles_4h)

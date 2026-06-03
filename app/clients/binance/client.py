@@ -1,7 +1,8 @@
 import logging
-from typing import Self
+from typing import Any, Self
 
 from binance import AsyncClient
+from binance.exceptions import BinanceAPIException
 
 from app.clients.binance.models import CVDPoint, LongShortRatio, OISnapshot
 from core.constants.time import (
@@ -33,6 +34,31 @@ _DEFAULT_CVD_INTERVAL = "4h"
 _KLINE_OPEN_TIME_IDX = 0
 _KLINE_VOLUME_IDX = 5
 _KLINE_TAKER_BUY_BASE_IDX = 9
+
+
+def _resolve_cvd_interval(timeframe_ms: int) -> str:
+    interval = _INTERVAL_MAP.get(timeframe_ms)
+    if interval is None:
+        logger.warning(
+            "cvd: unknown timeframe_ms=%d, defaulting to %s",
+            timeframe_ms,
+            _DEFAULT_CVD_INTERVAL,
+        )
+        return _DEFAULT_CVD_INTERVAL
+    return interval
+
+
+def _klines_to_cvd(raw: list[list[Any]]) -> list[CVDPoint]:
+    result: list[CVDPoint] = []
+    cumulative = 0.0
+    for candle in raw:
+        total_vol = float(candle[_KLINE_VOLUME_IDX])
+        buy_vol = float(candle[_KLINE_TAKER_BUY_BASE_IDX])
+        cumulative += buy_vol - (total_vol - buy_vol)
+        result.append(
+            CVDPoint(timestamp=int(candle[_KLINE_OPEN_TIME_IDX]), cvd=cumulative)
+        )
+    return result
 
 
 class BinanceClient:
@@ -82,29 +108,30 @@ class BinanceClient:
         buy_vol = takerBuyBaseAssetVolume, sell_vol = volume - takerBuyBase.
         Futures API: охватывает все перп-символы, в т.ч. те которых нет на споте.
         """
-        futures_symbol = to_exchange_pair(symbol)
-        interval = _INTERVAL_MAP.get(timeframe_ms)
-        if interval is None:
-            logger.warning(
-                "fetch_cvd: unknown timeframe_ms=%d, defaulting to %s",
-                timeframe_ms,
-                _DEFAULT_CVD_INTERVAL,
-            )
-            interval = _DEFAULT_CVD_INTERVAL
-
         raw = await self._client.futures_klines(
-            symbol=futures_symbol, interval=interval, limit=num_candles
+            symbol=to_exchange_pair(symbol),
+            interval=_resolve_cvd_interval(timeframe_ms),
+            limit=num_candles,
         )
+        return _klines_to_cvd(raw)
 
-        result: list[CVDPoint] = []
-        cumulative = 0.0
-        for candle in raw:
-            total_vol = float(candle[_KLINE_VOLUME_IDX])
-            buy_vol = float(candle[_KLINE_TAKER_BUY_BASE_IDX])
-            sell_vol = total_vol - buy_vol
-            cumulative += buy_vol - sell_vol
-            result.append(
-                CVDPoint(timestamp=int(candle[_KLINE_OPEN_TIME_IDX]), cvd=cumulative)
+    async def fetch_spot_cvd(
+        self,
+        symbol: str,
+        timeframe_ms: int = _DEFAULT_CVD_TIMEFRAME_MS,
+        num_candles: int = settings.CVD_CANDLES,
+    ) -> list[CVDPoint]:
+        """Spot-CVD по спот-свечам Binance — для сравнения с перп-потоком.
+
+        Best-effort: у части перпов нет спот-пары (BinanceAPIException) → []. Спот
+        отражает реальное накопление/распределение, перп — позиционирование ритейла.
+        """
+        try:
+            raw = await self._client.get_klines(
+                symbol=to_exchange_pair(symbol),
+                interval=_resolve_cvd_interval(timeframe_ms),
+                limit=num_candles,
             )
-
-        return result
+        except BinanceAPIException:
+            return []
+        return _klines_to_cvd(raw)

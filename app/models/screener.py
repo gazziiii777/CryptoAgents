@@ -23,6 +23,7 @@ PositioningRegime = Literal[
     "longs_building", "shorts_building", "shorts_covering", "longs_unwinding", "neutral"
 ]
 SqueezeSetup = Literal["long_squeeze_primed", "short_squeeze_primed", "none"]
+SpotPerpDivergence = Literal["bullish", "bearish", "none"]
 
 
 class SignalDetails(BaseModel):
@@ -52,6 +53,7 @@ class SignalDetails(BaseModel):
     smart_money_divergence: SmartMoneyDivergence = "neutral"
     positioning_regime: PositioningRegime = "neutral"
     squeeze_setup: SqueezeSetup = "none"
+    spot_perp_divergence: SpotPerpDivergence = "none"
 
 
 class ScreenerResult(BaseModel):
