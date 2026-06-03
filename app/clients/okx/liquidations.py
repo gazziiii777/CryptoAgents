@@ -45,13 +45,20 @@ async def stream_liquidations() -> AsyncIterator[NormalizedLiquidation]:
 
 
 async def _swap_contract_sizes() -> dict[str, float]:
+    """instId → contractSize только для LINEAR swap'ов (USDT/USDC-margined).
+
+    Inverse (coin-margined, BTC-USD-SWAP) исключаются: у них contractSize в USD, и
+    notional считается иначе; мы их не торгуем, как и Binance/Bybit-сборщики.
+    """
     exchange = ccxt.okx({"options": {"defaultType": "swap"}})
     try:
         await exchange.load_markets()
         return {
             market["id"]: float(market["contractSize"])
             for market in exchange.markets.values()
-            if market.get("swap") and market.get("contractSize")
+            if market.get("swap")
+            and market.get("linear")
+            and market.get("contractSize")
         }
     finally:
         await exchange.close()
@@ -88,7 +95,9 @@ def _parse(
         inst_id = row.get("instId")
         if not isinstance(inst_id, str):
             continue
-        contract_size = contract_sizes.get(inst_id, 1.0)
+        contract_size = contract_sizes.get(inst_id)
+        if contract_size is None:
+            continue
         for detail in row.get("details", []):
             event = _parse_detail(inst_id, detail, contract_size)
             if event is not None:
