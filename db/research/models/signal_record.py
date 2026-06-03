@@ -25,6 +25,7 @@ class SignalRecord(ResearchBase):
     funding_rate: Mapped[float | None] = mapped_column(Float)
     rsi_level: Mapped[float | None] = mapped_column(Float)
     oi_trend: Mapped[str | None] = mapped_column(String(16))
+    oi_aggregated_trend: Mapped[str | None] = mapped_column(String(16))
     cvd_trend: Mapped[str | None] = mapped_column(String(16))
     long_short_ratio: Mapped[float | None] = mapped_column(Float)
 

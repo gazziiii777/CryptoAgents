@@ -16,6 +16,7 @@ from app.screener.criteria import (
 )
 from app.screener.indicators import (
     calc_adx,
+    calc_aggregated_oi_trend,
     calc_atr,
     calc_bb_squeeze,
     calc_cvd_price_divergence,
@@ -129,6 +130,7 @@ async def evaluate_symbol(
             symbol, limit=settings.SCREENER_BASIS_LIMIT
         ),
         binance_client.fetch_spot_cvd(symbol, num_candles=settings.CVD_CANDLES),
+        cg_client.fetch_oi_aggregated_history(symbol, limit=settings.OI_HISTORY_LIMIT),
         return_exceptions=True,
     )
     cg_names = ("liquidation", "top_position_ratio", "oi_funding", "basis")
@@ -150,6 +152,7 @@ async def evaluate_symbol(
     )
     basis_hist = cg_raw[3] if not isinstance(cg_raw[3], BaseException) else []
     spot_cvd = cg_raw[4] if not isinstance(cg_raw[4], BaseException) else []
+    oi_aggregated_hist = cg_raw[5] if not isinstance(cg_raw[5], BaseException) else []
 
     retail_ls = ls_hist[-1].long_short_ratio if ls_hist else None
     top_ls = top_ratio_hist[-1].long_short_ratio if top_ratio_hist else None
@@ -178,6 +181,7 @@ async def evaluate_symbol(
         near_swing=calc_near_swing(candles_1d, window=settings.NEAR_SWING_WINDOW),
         oi_change_4h_pct=_calc_oi_change_4h(oi_hist),
         oi_trend=calc_oi_trend(oi_hist),
+        oi_aggregated_trend=calc_aggregated_oi_trend(oi_aggregated_hist),
         funding_rate=funding_hist[-1].funding_rate if funding_hist else 0.0,
         funding_bias=funding_bias,
         oi_weighted_funding_bias=oi_weighted_funding_bias,

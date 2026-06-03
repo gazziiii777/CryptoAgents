@@ -40,4 +40,4 @@ class Signal(SQLModel, table=True):
 
     decision: Decision = Field(default=Decision.NO_TRADE)
     decision_reason: str | None = Field(default=None, max_length=256)
-    strategy_version: str = Field(default="2.0.0", max_length=32)
+    strategy_version: str = Field(default="2.1.0", max_length=32)

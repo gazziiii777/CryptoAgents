@@ -41,6 +41,7 @@ class SignalDetails(BaseModel):
     near_swing: bool
     oi_change_4h_pct: float
     oi_trend: OiTrend
+    oi_aggregated_trend: OiTrend = "neutral"
     funding_rate: float
     funding_bias: FundingBias
     oi_weighted_funding_bias: FundingBias

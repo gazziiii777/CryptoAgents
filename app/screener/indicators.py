@@ -6,7 +6,11 @@ import ta
 
 from app.clients.binance.models import CVDPoint, OISnapshot
 from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
-from app.clients.coinglass.models import FundingRateOHLC, LiquidationHistoryPoint
+from app.clients.coinglass.models import (
+    FundingRateOHLC,
+    LiquidationHistoryPoint,
+    OIAggregatedCandle,
+)
 from app.models.screener import (
     CvdPriceDivergence,
     CvdTrend,
@@ -357,6 +361,27 @@ def calc_oi_trend(
 
     change_pct = (last_oi - first_oi) / first_oi
 
+    if change_pct >= settings.OI_TREND_MIN_PCT:
+        return "growing"
+    if change_pct <= -settings.OI_TREND_MIN_PCT:
+        return "shrinking"
+    return "neutral"
+
+
+def calc_aggregated_oi_trend(
+    candles: list[OIAggregatedCandle], lookback: int = _OI_TREND_LOOKBACK
+) -> OiTrend:
+    """Тренд агрегированного (мультибиржевого) OI по close-значениям за lookback.
+
+    Тот же порог OI_TREND_MIN_PCT, что и Binance-only calc_oi_trend — расхождение
+    между ними информативно (рост OI только на Binance vs по всем биржам).
+    """
+    if len(candles) < lookback + 2:
+        return "neutral"
+    first_oi = candles[-(lookback + 1)].close
+    if first_oi == 0:
+        return "neutral"
+    change_pct = (candles[-1].close - first_oi) / first_oi
     if change_pct >= settings.OI_TREND_MIN_PCT:
         return "growing"
     if change_pct <= -settings.OI_TREND_MIN_PCT:

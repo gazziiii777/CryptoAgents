@@ -43,6 +43,7 @@ def _render_user_prompt(template: str, signals: SignalDetails) -> str:
         smart_money_divergence=signals.smart_money_divergence,
         oi_change_4h=f"{signals.oi_change_4h_pct * 100:+.2f}%",
         oi_trend=signals.oi_trend,
+        oi_aggregated_trend=signals.oi_aggregated_trend,
         long_short_ratio=_ratio(signals.long_short_ratio),
         top_trader_ls_ratio=_ratio(signals.top_trader_ls_ratio),
         cvd_trend=signals.cvd_trend,

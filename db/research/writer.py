@@ -47,6 +47,7 @@ def _build_signal_record(
         funding_rate=signals.funding_rate,
         rsi_level=signals.rsi_level,
         oi_trend=_enum_value(signals.oi_trend),
+        oi_aggregated_trend=_enum_value(signals.oi_aggregated_trend),
         cvd_trend=_enum_value(signals.cvd_trend),
         long_short_ratio=signals.long_short_ratio,
         volume_spike=signals.volume_spike,

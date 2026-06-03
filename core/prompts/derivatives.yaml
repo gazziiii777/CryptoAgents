@@ -35,6 +35,10 @@ system: |
     high negative funding (crowded shorts) is a SHORT-SQUEEZE risk and weighs BULLISH.
     Do NOT treat extreme funding as trend confirmation — treat it as reversal risk.
     "moderate" leans the same way but weakly; "none" means funding is not a squeeze factor.
+  - OI trend comes in two views: Binance-only and aggregated (all exchanges). When they
+    AGREE, the positioning build is broad and the oi_signal is more reliable. When they
+    DIVERGE (e.g. Binance OI growing but aggregated flat/shrinking), the build is
+    venue-concentrated and weaker — discount the OI confirmation and note it in key_insight.
   - First write `key_insight` (1-3 sentences working through the figures), THEN set the
     classification fields so they follow from it.
 
@@ -44,7 +48,8 @@ user: |
   - Funding bias: $funding_bias  |  OI-weighted funding bias: $oi_weighted_funding_bias
   - Funding squeeze risk: $funding_squeeze_risk
   - Smart-money divergence (top vs retail): $smart_money_divergence
-  - Open interest 4h change: $oi_change_4h  |  OI trend: $oi_trend
+  - Open interest 4h change: $oi_change_4h  |  OI trend (Binance): $oi_trend
+  - OI trend (aggregated, all exchanges): $oi_aggregated_trend
   - Long/short ratio (retail): $long_short_ratio
   - Long/short ratio (top traders): $top_trader_ls_ratio
   - CVD trend: $cvd_trend  |  CVD-price divergence: $cvd_price_divergence
