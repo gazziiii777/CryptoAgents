@@ -134,4 +134,11 @@ class BinanceClient:
             )
         except BinanceAPIException:
             return []
+        except Exception:
+            logger.warning(
+                "fetch_spot_cvd: spot klines failed for %s, skipping spot signal",
+                symbol,
+                exc_info=True,
+            )
+            return []
         return _klines_to_cvd(raw)

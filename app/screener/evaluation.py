@@ -83,7 +83,6 @@ async def evaluate_symbol(
             oi_hist,
             ls_hist,
             cvd,
-            spot_cvd,
         ) = await asyncio.gather(
             ccxt_client.fetch_ohlcv(
                 symbol, timeframe="4h", limit=settings.SCREENER_4H_LIMIT
@@ -101,7 +100,6 @@ async def evaluate_symbol(
                 symbol, period="4h", limit=settings.SCREENER_LS_RATIO_LIMIT
             ),
             binance_client.fetch_cvd(symbol, num_candles=settings.CVD_CANDLES),
-            binance_client.fetch_spot_cvd(symbol, num_candles=settings.CVD_CANDLES),
         )
     except Exception:
         logger.error("evaluate_symbol: data fetch failed for %s", symbol, exc_info=True)
@@ -130,6 +128,7 @@ async def evaluate_symbol(
         cg_client.fetch_futures_basis_history(
             symbol, limit=settings.SCREENER_BASIS_LIMIT
         ),
+        binance_client.fetch_spot_cvd(symbol, num_candles=settings.CVD_CANDLES),
         return_exceptions=True,
     )
     cg_names = ("liquidation", "top_position_ratio", "oi_funding", "basis")
@@ -150,6 +149,7 @@ async def evaluate_symbol(
         cg_raw[2] if not isinstance(cg_raw[2], BaseException) else []
     )
     basis_hist = cg_raw[3] if not isinstance(cg_raw[3], BaseException) else []
+    spot_cvd = cg_raw[4] if not isinstance(cg_raw[4], BaseException) else []
 
     retail_ls = ls_hist[-1].long_short_ratio if ls_hist else None
     top_ls = top_ratio_hist[-1].long_short_ratio if top_ratio_hist else None
