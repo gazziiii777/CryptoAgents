@@ -172,9 +172,9 @@ class Settings(BaseSettings):
     DRAWDOWN_HALT_PCT: float = Field(default=0.10, gt=0.0, le=1.0)
     FUNDING_KILL_SWITCH_PCT: float = Field(default=0.0025, gt=0.0, le=1.0)
     TAKER_FEE_RATE: float = Field(default=0.0005, ge=0.0, le=0.01)
-    BREAKEVEN_TRIGGER_R: float = Field(default=1.0, gt=0.0, le=10.0)
-    TRAIL_ACTIVATION_R: float = Field(default=1.5, gt=0.0, le=10.0)
-    TRAIL_DISTANCE_R: float = Field(default=1.0, gt=0.0, le=10.0)
+    BREAKEVEN_TRIGGER_R: float = Field(default=0.5, gt=0.0, le=10.0)
+    TRAIL_ACTIVATION_R: float = Field(default=1.0, gt=0.0, le=10.0)
+    TRAIL_DISTANCE_R: float = Field(default=0.5, gt=0.0, le=10.0)
     EXIT_TIMEFRAME: str = "15m"
     EXIT_CANDLE_LIMIT: int = Field(default=1000, ge=1, le=1500)
     KEY_ALERT_COOLDOWN_S: int = Field(default=1800, ge=60, le=86400)
