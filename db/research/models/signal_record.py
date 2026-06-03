@@ -44,6 +44,12 @@ class SignalRecord(ResearchBase):
     top_trader_ls_ratio: Mapped[float | None] = mapped_column(Float)
     basis: Mapped[float | None] = mapped_column(Float)
     smart_money_divergence: Mapped[str | None] = mapped_column(String(20))
+    positioning_regime: Mapped[str | None] = mapped_column(String(20))
+    squeeze_setup: Mapped[str | None] = mapped_column(String(20))
+    spot_perp_divergence: Mapped[str | None] = mapped_column(String(8))
+    book_imbalance: Mapped[float | None] = mapped_column(Float)
+    liq_magnet_above: Mapped[float | None] = mapped_column(Float)
+    liq_magnet_below: Mapped[float | None] = mapped_column(Float)
     pump_risk: Mapped[str | None] = mapped_column(String(8))
 
     macro_bias: Mapped[str] = mapped_column(String(16))

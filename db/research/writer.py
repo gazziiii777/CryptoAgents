@@ -29,6 +29,7 @@ def _build_signal_record(
 ) -> SignalRecord:
     screener = candidate_signal.candidate.screener
     signals = screener.signals
+    liquidity = screener.liquidity_map
     synthesis = candidate_signal.synthesis
     setup = candidate_signal.crypto_setup
     technical = candidate_signal.technical
@@ -64,6 +65,20 @@ def _build_signal_record(
         top_trader_ls_ratio=signals.top_trader_ls_ratio,
         basis=signals.basis,
         smart_money_divergence=signals.smart_money_divergence,
+        positioning_regime=signals.positioning_regime,
+        squeeze_setup=signals.squeeze_setup,
+        spot_perp_divergence=signals.spot_perp_divergence,
+        book_imbalance=liquidity.book_imbalance if liquidity else None,
+        liq_magnet_above=(
+            liquidity.nearest_magnet_above.price
+            if liquidity and liquidity.nearest_magnet_above
+            else None
+        ),
+        liq_magnet_below=(
+            liquidity.nearest_magnet_below.price
+            if liquidity and liquidity.nearest_magnet_below
+            else None
+        ),
         pump_risk=candidate_signal.candidate.social.pump_risk,
         macro_bias=candidate_signal.macro.btc_bias,
         macro_regime=candidate_signal.macro.regime,

@@ -36,6 +36,9 @@ def _distinct_signals() -> SignalDetails:
         top_trader_ls_ratio=2.1,
         basis=0.0003,
         smart_money_divergence="diverges_bullish",
+        positioning_regime="longs_building",
+        squeeze_setup="long_squeeze_primed",
+        spot_perp_divergence="bullish",
     )
 
 
@@ -82,6 +85,10 @@ def test_build_signal_record_captures_feature_snapshot() -> None:
     assert record.macd == "bullish"
     assert record.cvd_price_divergence == "bearish"
     assert record.smart_money_divergence == "diverges_bullish"
+    assert record.positioning_regime == "longs_building"
+    assert record.squeeze_setup == "long_squeeze_primed"
+    assert record.spot_perp_divergence == "bullish"
+    assert record.book_imbalance is None
 
 
 @pytest.mark.unit
