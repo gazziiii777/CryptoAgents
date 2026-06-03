@@ -54,9 +54,11 @@ divergence топ-трейдеров), снятым раз в 4h. Это реа�
     при реконнекте, {op:ping} на простое).
   Покрытие ~80% рынка. Это сырьё для **калибровки**: где ликвидации реально случаются.
   ⚠️ Тонкости в данных:
-  - notional_usd теперь корректный для всех (OKX: sz×contractSize; Bybit: v уже в
-    базовой). НО строки OKX **до фикса** (id примерно до деплоя 2026-06-02 ~12:46)
-    имеют раздутый notional — при калибровке фильтровать по времени/exchange;
+  - notional_usd корректный для всех (OKX: sz×contractSize только linear; Bybit: v
+    уже в базовой; Binance: z в базовой). OKX **только linear USDT/USDC** — inverse
+    (coin-margined BTC-USD-SWAP) исключены (у них contractSize в USD → другой расчёт).
+    OKX-данные были переустановлены с чистого листа 2026-06-03 ~12:01 (старые имели
+    раздутый notional от inverse + до contractSize-фикса);
   - **сторона различается по биржам** (нормализована в `liquidated_side`): Binance
     order-side (SELL=long), OKX `posSide` напрямую, Bybit position-side (Buy=long,
     Sell=short — зеркально Binance). Сверено с офиц. доками, не перепутать.
