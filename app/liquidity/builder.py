@@ -1,4 +1,5 @@
 from app.clients.ccxt.models import OHLCVCandle, OrderBook
+from app.liquidity.imbalance import calc_book_imbalance
 from app.liquidity.liquidation_model import estimate_liquidation_clusters
 from app.liquidity.walls import detect_walls
 from app.models.liquidity import LiquidityLevel, LiquidityMap
@@ -22,6 +23,7 @@ def build_liquidity_map(
         mark_price=mark_price,
         walls=walls,
         liq_clusters=clusters,
+        book_imbalance=calc_book_imbalance(order_book),
         nearest_magnet_above=_nearest_above(clusters, mark_price),
         nearest_magnet_below=_nearest_below(clusters, mark_price),
         nearest_sell_wall_above=_nearest_above(

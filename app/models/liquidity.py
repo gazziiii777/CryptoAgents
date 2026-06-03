@@ -24,6 +24,7 @@ class LiquidityMap(BaseModel):
     mark_price: float
     walls: list[LiquidityLevel]
     liq_clusters: list[LiquidityLevel]
+    book_imbalance: float = 0.0
     nearest_magnet_above: LiquidityLevel | None = None
     nearest_magnet_below: LiquidityLevel | None = None
     nearest_sell_wall_above: LiquidityLevel | None = None

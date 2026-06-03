@@ -248,11 +248,13 @@ async def _build_liquidity(
     magnet_above = liquidity_map.nearest_magnet_above
     magnet_below = liquidity_map.nearest_magnet_below
     logger.info(
-        "liquidity: %s mark=%.6g walls=%d clusters=%d magnet_above=%s magnet_below=%s",
+        "liquidity: %s mark=%.6g walls=%d clusters=%d imbalance=%.2f"
+        " magnet_above=%s magnet_below=%s",
         symbol,
         liquidity_map.mark_price,
         len(liquidity_map.walls),
         len(liquidity_map.liq_clusters),
+        liquidity_map.book_imbalance,
         f"{magnet_above.price:.6g}" if magnet_above else "none",
         f"{magnet_below.price:.6g}" if magnet_below else "none",
     )

@@ -94,6 +94,7 @@ class Settings(BaseSettings):
     LIQUIDITY_PROFILE_BINS: int = Field(default=50, ge=5, le=500)
     LIQUIDITY_CLUSTER_BIN_PCT: float = Field(default=0.005, gt=0.0, le=0.1)
     LIQUIDITY_TOP_CLUSTERS: int = Field(default=6, ge=1, le=50)
+    LIQUIDITY_IMBALANCE_DEPTH: int = Field(default=20, ge=1, le=1000)
 
     LIQUIDATION_BATCH_SIZE: int = Field(default=100, ge=1, le=10000)
     LIQUIDATION_FLUSH_INTERVAL_S: float = Field(default=10.0, ge=1.0, le=600.0)
