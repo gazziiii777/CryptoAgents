@@ -8,11 +8,11 @@ from db.types import UTCDateTime
 
 
 class LiquidationEvent(ResearchBase):
-    """Событие принудительной ликвидации Binance USD-M (стрим !forceOrder@arr).
+    """Событие принудительной ликвидации с Binance / OKX / Bybit (linear USDT-перпы).
 
     Сырой поток для будущей калибровки прокси-карты ликвидаций: где реально
-    случались ликвидации по цене/времени. order_side — сторона форс-ордера с
-    биржи; liquidated_side выведена из неё (SELL → ликвидирован лонг, BUY → шорт).
+    случались ликвидации по цене/времени. order_side — сырая сторона с биржи (у
+    каждой своя конвенция); liquidated_side нормализована в long/short.
     """
 
     __tablename__ = "liquidation_event"
