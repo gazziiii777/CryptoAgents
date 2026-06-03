@@ -7,11 +7,11 @@ class LLMProvider(StrEnum):
 
 
 QUICK_MODEL_BY_PROVIDER = {
-    LLMProvider.OPENAI: "gpt-4o-mini",
+    LLMProvider.OPENAI: "gpt-4.1-mini",
     LLMProvider.ANTHROPIC: "claude-haiku-4-5",
 }
 
 DEEP_MODEL_BY_PROVIDER = {
-    LLMProvider.OPENAI: "gpt-4o",
+    LLMProvider.OPENAI: "gpt-4.1",
     LLMProvider.ANTHROPIC: "claude-sonnet-4-6",
 }

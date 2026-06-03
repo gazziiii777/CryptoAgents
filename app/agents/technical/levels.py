@@ -2,7 +2,15 @@ import pandas as pd
 
 from app.agents.technical.models import TechnicalFacts
 from app.clients.ccxt.models import OHLCVCandle
-from app.screener.indicators import calc_atr
+from app.screener.indicators import (
+    calc_adx,
+    calc_atr,
+    calc_daily_trend,
+    calc_ema_cross,
+    calc_macd,
+    calc_rsi_divergence,
+    calc_rsi_level,
+)
 
 _RECENT_LOOKBACK_4H = 30
 _EMA_FAST = 20
@@ -31,4 +39,10 @@ def compute_facts(
         recent_low=min(c.low for c in recent),
         prev_day_high=prev_day.high,
         prev_day_low=prev_day.low,
+        adx=calc_adx(candles_4h),
+        rsi=calc_rsi_level(candles_4h),
+        rsi_divergence=calc_rsi_divergence(candles_4h),
+        macd=calc_macd(candles_4h),
+        ema_cross=calc_ema_cross(candles_4h),
+        daily_trend=calc_daily_trend(candles_1d),
     )

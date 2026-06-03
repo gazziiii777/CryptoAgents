@@ -29,6 +29,12 @@ def _render_user_prompt(template: str, symbol: str, facts: TechnicalFacts) -> st
         recent_low=_price(facts.recent_low),
         prev_day_high=_price(facts.prev_day_high),
         prev_day_low=_price(facts.prev_day_low),
+        adx=f"{facts.adx:.1f}",
+        rsi=f"{facts.rsi:.1f}" if facts.rsi is not None else "n/a",
+        rsi_divergence=facts.rsi_divergence or "none",
+        macd=facts.macd or "neutral",
+        ema_cross=facts.ema_cross or "none",
+        daily_trend=facts.daily_trend,
     )
 
 
