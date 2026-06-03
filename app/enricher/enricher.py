@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import httpx
 
 from app.clients.coingecko.client import CoinGeckoClient
+from app.clients.coingecko.models import MacroSnapshot
 from app.clients.coinglass.client import CoinGlassClient
 from app.clients.lunarcrush.client import LunarCrushClient
 from app.clients.lunarcrush.models import (
@@ -21,6 +22,14 @@ from core.settings import settings
 from core.symbols import normalized_base
 
 logger = logging.getLogger(__name__)
+
+_NEUTRAL_MACRO = MacroSnapshot(
+    btc_dominance=0.0,
+    btc_price_usd=0.0,
+    btc_change_24h=0.0,
+    btc_change_7d=0.0,
+    total_market_cap_change_24h=0.0,
+)
 
 
 class DataEnricher:
@@ -49,9 +58,9 @@ class DataEnricher:
             LunarCrushClient() as lunarcrush,
         ):
             macro, fear_greed, lc_metrics = await asyncio.gather(
-                coingecko.fetch_macro_snapshot(),
+                self._fetch_macro(coingecko),
                 self._fetch_fear_greed(coinglass),
-                lunarcrush.fetch_topic_metrics(symbols),
+                self._fetch_lc_metrics(lunarcrush, symbols),
             )
             per_symbol = await asyncio.gather(
                 *[
@@ -146,6 +155,24 @@ class DataEnricher:
             else None
         )
         return whatsup, news, posts, time_series, lc_context
+
+    async def _fetch_macro(self, coingecko: CoinGeckoClient) -> MacroSnapshot:
+        """Макро-снимок CoinGecko; при сбое (free-tier 400/429) — neutral, тик живёт."""
+        try:
+            return await coingecko.fetch_macro_snapshot()
+        except (httpx.HTTPError, RuntimeError) as exc:
+            logger.warning("Failed to fetch macro snapshot, using neutral: %s", exc)
+            return _NEUTRAL_MACRO
+
+    async def _fetch_lc_metrics(
+        self, lunarcrush: LunarCrushClient, symbols: list[str]
+    ) -> dict[str, LunarCrushCoinMetrics]:
+        """Метрики LunarCrush по символам; при сбое — пусто, тик живёт."""
+        try:
+            return await lunarcrush.fetch_topic_metrics(symbols)
+        except (httpx.HTTPError, RuntimeError) as exc:
+            logger.warning("Failed to fetch lunarcrush metrics: %s", exc)
+            return {}
 
     async def _fetch_fear_greed(self, coinglass: CoinGlassClient) -> int | None:
         try:
