@@ -154,8 +154,8 @@ class Settings(BaseSettings):
     LLM_TEMPERATURE: float = Field(default=0.2, ge=0.0, le=2.0)
     LLM_TIMEOUT_S: float = Field(default=60.0, ge=5.0, le=600.0)
 
-    CONFLUENCE_GATE: float = Field(default=0.46, ge=0.0, le=1.0)
-    CONFIDENCE_SHRINKAGE: float = Field(default=0.75, ge=0.1, le=1.0)
+    CONFLUENCE_GATE: float = Field(default=0.50, ge=0.0, le=1.0)
+    CONFIDENCE_SHRINKAGE: float = Field(default=0.80, ge=0.1, le=1.0)
     RISK_REWARD_MIN: float = Field(default=1.5, ge=1.0, le=10.0)
     FUNDING_COST_MAX_PCT: float = Field(default=0.01, ge=0.0, le=1.0)
     FUNDING_EXTREME_PCT: float = Field(default=0.0030, gt=0.0, le=1.0)
