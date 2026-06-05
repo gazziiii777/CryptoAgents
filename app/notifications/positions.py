@@ -5,7 +5,7 @@ from decimal import Decimal
 from app.clients.telegram.client import TelegramClient
 from core.constants.time import SECONDS_PER_HOUR
 from core.settings import settings
-from db.models import PositionSide, VirtualPosition
+from db.models import ExitReason, PositionSide, VirtualPosition
 
 logger = logging.getLogger(__name__)
 
@@ -129,3 +129,40 @@ async def notify_position_closed(position: VirtualPosition, balance: Decimal) ->
             await client.send_message(_format_close(position, balance))
     except Exception:
         logger.error("telegram: failed to notify close", exc_info=True)
+
+
+def _format_stop_update(
+    position: VirtualPosition,
+    reason: ExitReason,
+    stop_price: Decimal,
+    mark_price: Decimal,
+) -> str:
+    header = (
+        "🔶 <b>Стоп → безубыток</b>"
+        if reason == ExitReason.BREAKEVEN
+        else "🟦 <b>Трейлинг активирован</b>"
+    )
+    return (
+        f"{header}  {_side_label(position.side)}\n"
+        f"<b>{position.symbol}</b>\n"
+        f"Цена: <code>{_price(mark_price)}</code>  →  стоп <code>{_price(stop_price)}</code>\n"
+        f"Вход: <code>{_price(position.entry_price)}</code>"
+    )
+
+
+async def notify_stop_update(
+    position: VirtualPosition,
+    reason: ExitReason,
+    stop_price: Decimal,
+    mark_price: Decimal,
+) -> None:
+    """Шлёт алерт о сдвиге стопа (безубыток/трейлинг) открытой позиции. Сбой не критичен."""
+    if not settings.TELEGRAM_ENABLED:
+        return
+    try:
+        async with TelegramClient() as client:
+            await client.send_message(
+                _format_stop_update(position, reason, stop_price, mark_price)
+            )
+    except Exception:
+        logger.error("telegram: failed to notify stop update", exc_info=True)

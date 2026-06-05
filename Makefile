@@ -2,7 +2,7 @@
 
 .PHONY: help install lint format format.check typecheck test test.cov test.integration check clean \
         logs restart rebuild shell db.shell db.url migration nuke init-migration \
-        deploy deploy.migrate deploy.logs deploy.logs.agent deploy.logs.collector \
+        deploy deploy.migrate deploy.logs deploy.logs.agent deploy.logs.collector deploy.logs.monitor \
         deploy.status deploy.shell deploy.down
 
 # Подгружаем локальные overrides (IP сервера, юзер) если есть — gitignored
@@ -99,7 +99,7 @@ deploy: _require-host ## Залить код + перебилдить worker н�
 		--exclude='research/data/' \
 		--exclude='ReferenceTradingAgents/' \
 		./ $(SERVER_USER)@$(SERVER_HOST):$(SERVER_DIR)/
-	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build worker collector backup'
+	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build worker collector monitor backup'
 	@echo "Deployed. Logs: make deploy.logs"
 
 deploy.migrate: _require-host ## Применить alembic upgrade head на проде (ОТДЕЛЬНО от deploy)
@@ -113,6 +113,9 @@ deploy.logs.agent: _require-host ## Логи торгового агента (wo
 
 deploy.logs.collector: _require-host ## Логи сборщика ликвидаций (collector) на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f collector'
+
+deploy.logs.monitor: _require-host ## Логи монитора позиций (monitor) на проде
+	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f monitor'
 
 deploy.status: _require-host ## docker compose ps на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose ps'

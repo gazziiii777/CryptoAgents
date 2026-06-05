@@ -179,6 +179,10 @@ class Settings(BaseSettings):
     EXIT_CANDLE_LIMIT: int = Field(default=1000, ge=1, le=1500)
     KEY_ALERT_COOLDOWN_S: int = Field(default=1800, ge=60, le=86400)
 
+    MONITOR_INTERVAL_S: int = Field(default=300, ge=30, le=3600)
+    MONITOR_TIMEFRAME: str = "5m"
+    MONITOR_CANDLE_LIMIT: int = Field(default=300, ge=1, le=1500)
+
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None
 

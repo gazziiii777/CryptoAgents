@@ -76,6 +76,18 @@ services:
         condition: service_completed_successfully
         required: false
 
+  # Always-on монитор открытых позиций: раз в 5 мин шлёт Telegram-алерт при сдвиге
+  # стопа (безубыток/трейлинг). Notify-only — не закрывает позиции (это за worker).
+  monitor:
+    build: .
+    env_file: .env
+    command: ["monitor-positions"]
+    restart: unless-stopped
+    stop_grace_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Always-on сборщик ликвидаций Binance USD-M (ws !forceOrder@arr → research-БД).
   # Отдельный сервис от worker: постоянный стрим 24/7, переживает рестарты воркера.
   collector:
