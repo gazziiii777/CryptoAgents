@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from app.clients.coingecko.models import MacroSnapshot
-from app.enricher.enricher import _NEUTRAL_MACRO, DataEnricher
+from app.adapters.clients.coingecko.models import MacroSnapshot
+from app.services.enricher.enricher import _NEUTRAL_MACRO, DataEnricher
 
 
 @pytest.mark.unit

@@ -1,5 +1,5 @@
-from app.clients.ccxt.models import OHLCVCandle
-from app.liquidity.liquidation_model import estimate_liquidation_clusters
+from app.adapters.clients.ccxt.models import OHLCVCandle
+from app.services.liquidity.liquidation_model import estimate_liquidation_clusters
 
 
 def _candle(typical: float, volume: float) -> OHLCVCandle:

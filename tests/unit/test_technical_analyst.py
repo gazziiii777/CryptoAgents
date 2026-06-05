@@ -1,9 +1,9 @@
-from app.models.analysis import TechnicalReport
+from app.domain.models.analysis import TechnicalReport
 from core.prompts.loader import load_prompt
-from app.agents.technical.graph import analyze_technical
-from app.agents.technical.levels import compute_facts
-from app.agents.technical.nodes import _render_user_prompt
-from app.clients.ccxt.models import OHLCVCandle
+from app.services.agents.technical.graph import analyze_technical
+from app.services.agents.technical.levels import compute_facts
+from app.services.agents.technical.nodes import _render_user_prompt
+from app.adapters.clients.ccxt.models import OHLCVCandle
 from core.settings import settings
 
 

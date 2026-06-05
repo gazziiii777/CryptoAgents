@@ -3,7 +3,7 @@ import asyncio
 import typer
 
 from app.exceptions import StartupError
-from app.scheduler import run_forever, run_once
+from app.engines.worker.scheduler import run_forever, run_once
 from app.startup import preflight
 
 
@@ -13,7 +13,7 @@ def run(
         None, "--limit", "-n", min=1, help="Top-N pairs (smoke); omit for full universe"
     ),
 ) -> None:
-    """Scheduler loop: every 4h bar close runs the watcher then the pipeline.
+    """Scheduler loop: every 4h bar close runs the pipeline (screen → agents → open).
 
     Проверяет ключи перед стартом (fail-fast). Миграции применяются ОТДЕЛЬНО —
     локально через `make up`, на проде через `make deploy.migrate` или вручную

@@ -2,7 +2,7 @@ import pytest
 from freezegun import freeze_time
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.clients.llm.models import LLMUsage
+from app.adapters.clients.llm.models import LLMUsage
 from app.llm_gateway.budget import DailyBudgetGuard
 from app.llm_gateway.errors import LLMBudgetExceededError
 from db.models import EventType

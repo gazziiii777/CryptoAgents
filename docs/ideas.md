@@ -164,3 +164,7 @@ divergence топ-трейдеров), снятым раз в 4h. Это реа�
 прогнать `scripts/research/attribution.py` → посмотреть реальный winrate / средний R /
 MFE / знак edge и срез long-vs-short. Если контртренд-сигналы дают edge — тогда
 идея №1 (карта ликвидаций). Если нет — расширения тем более не спасут.
+
+## Реальная торговля на Bybit + переключатель demo↔live
+
+Детальный план фазами вынесен в [real-trading-plan.md](real-trading-plan.md) — broker-абстракция (PaperBroker/BybitBroker), reconciliation, кнопка режима на фронте. Не начато.

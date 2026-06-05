@@ -1,7 +1,7 @@
 import pytest
 
-from app.enricher.insight import classify_pump_risk
-from app.screener.criteria import classify_smart_money_divergence
+from app.services.enricher.insight import classify_pump_risk
+from app.services.screener.criteria import classify_smart_money_divergence
 
 _HIGH = 3.3
 _LOW = 0.55

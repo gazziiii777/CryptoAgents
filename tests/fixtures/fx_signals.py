@@ -1,17 +1,17 @@
 from datetime import datetime, timezone
 
-from app.aggregator import aggregate_signals
-from app.enricher.insight import derive_social_insight
-from app.models.analysis import (
+from app.domain.synthesis.aggregator import aggregate_signals
+from app.services.enricher.insight import derive_social_insight
+from app.domain.models.analysis import (
     CandidateSignal,
     DerivativesReport,
     MacroReport,
     SentimentReport,
     TechnicalReport,
 )
-from app.models.enricher import EnrichedCandidate
-from app.models.screener import ScreenerResult, SignalDetails, empty_signals
-from app.models.setup import CryptoSetup
+from app.domain.models.enricher import EnrichedCandidate
+from app.domain.models.screener import ScreenerResult, SignalDetails, empty_signals
+from app.domain.models.setup import CryptoSetup
 from core.constants.decisions import REASON_SIGNAL_READY
 
 _SYMBOL = "ZEC/USDT:USDT"

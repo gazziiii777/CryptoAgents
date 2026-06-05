@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := help
 
 .PHONY: help install lint format format.check typecheck test test.cov test.integration check clean \
-        logs restart rebuild shell db.shell db.url migration nuke init-migration \
-        deploy deploy.migrate deploy.logs deploy.logs.agent deploy.logs.collector deploy.logs.monitor \
-        deploy.status deploy.shell deploy.down
+        archlint logs restart rebuild shell db.shell db.url migration nuke init-migration \
+        deploy deploy.migrate deploy.logs deploy.logs.agent deploy.logs.collector deploy.logs.position-manager \
+        deploy.logs.api deploy.status deploy.shell deploy.down
 
 # Подгружаем локальные overrides (IP сервера, юзер) если есть — gitignored
 -include .make.local
@@ -99,7 +99,7 @@ deploy: _require-host ## Залить код + перебилдить worker н�
 		--exclude='research/data/' \
 		--exclude='ReferenceTradingAgents/' \
 		./ $(SERVER_USER)@$(SERVER_HOST):$(SERVER_DIR)/
-	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build worker collector monitor backup'
+	$(SSH) 'cd $(SERVER_DIR) && docker compose up -d --build --remove-orphans api worker collector position-manager backup'
 	@echo "Deployed. Logs: make deploy.logs"
 
 deploy.migrate: _require-host ## Применить alembic upgrade head на проде (ОТДЕЛЬНО от deploy)
@@ -114,8 +114,11 @@ deploy.logs.agent: _require-host ## Логи торгового агента (wo
 deploy.logs.collector: _require-host ## Логи сборщика ликвидаций (collector) на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f collector'
 
-deploy.logs.monitor: _require-host ## Логи монитора позиций (monitor) на проде
-	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f monitor'
+deploy.logs.position-manager: _require-host ## Логи движка управления позициями на проде
+	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f position-manager'
+
+deploy.logs.api: _require-host ## Логи analytics API (api) на проде
+	$(SSH) 'cd $(SERVER_DIR) && docker compose logs -f api'
 
 deploy.status: _require-host ## docker compose ps на проде
 	$(SSH) 'cd $(SERVER_DIR) && docker compose ps'
@@ -145,6 +148,9 @@ format.check: ## Ruff format check (no writes)
 typecheck: ## Static type check (mypy over app/core/db)
 	uv run mypy
 
+archlint: ## Enforce layer boundaries (adapters → domain → services → engines)
+	uv run lint-imports
+
 test: ## Unit tests, fast (no coverage gate)
 	uv run pytest tests/unit
 
@@ -154,7 +160,7 @@ test.cov: ## Unit tests with coverage gate
 test.integration: ## Integration tests (opt-in, requires services)
 	uv run pytest tests/integration -m integration
 
-check: lint format.check typecheck test.cov ## Full quality gate (used by CI)
+check: lint format.check typecheck archlint test.cov ## Full quality gate (used by CI)
 
 clean: ## Remove caches and coverage artifacts
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage htmlcov

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.notifications import alerts
+from app.adapters.notifications import alerts
 
 
 @pytest.mark.unit
@@ -25,7 +25,7 @@ async def test_notify_key_dead_noop_when_disabled(
 ) -> None:
     alerts._last_alert.clear()
     client_cls = MagicMock()
-    monkeypatch.setattr("app.notifications.alerts.TelegramClient", client_cls)
+    monkeypatch.setattr("app.adapters.notifications.alerts.TelegramClient", client_cls)
 
     await alerts.notify_key_dead("SVC")
 

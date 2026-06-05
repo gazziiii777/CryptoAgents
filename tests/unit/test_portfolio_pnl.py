@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.portfolio.pnl import (
+from app.domain.risk.pnl import (
     entry_exit_fees,
     funding_cost,
     price_pnl,

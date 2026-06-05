@@ -1,8 +1,8 @@
-from app.models.analysis import SentimentReport
+from app.domain.models.analysis import SentimentReport
 from core.prompts.loader import load_prompt
-from app.analysts.sentiment import _render_user_prompt, analyze_sentiment
-from app.clients.lunarcrush.models import LunarCrushCoinMetrics
-from app.enricher.insight import derive_social_insight
+from app.services.analysts.sentiment import _render_user_prompt, analyze_sentiment
+from app.adapters.clients.lunarcrush.models import LunarCrushCoinMetrics
+from app.services.enricher.insight import derive_social_insight
 
 
 def _social():

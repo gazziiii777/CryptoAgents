@@ -1,9 +1,9 @@
 from datetime import timezone
 
-from app.clients.binance.liquidations import _parse as parse_binance
-from app.clients.bybit.liquidations import _parse as parse_bybit
-from app.clients.okx.liquidations import _parse as parse_okx
-from app.models.liquidations import NormalizedLiquidation
+from app.adapters.clients.binance.liquidations import _parse as parse_binance
+from app.adapters.clients.bybit.liquidations import _parse as parse_bybit
+from app.adapters.clients.okx.liquidations import _parse as parse_okx
+from app.domain.models.liquidations import NormalizedLiquidation
 from db.research.writer import _to_liquidation_row
 
 _TRADE_TIME_MS = 1568014460893

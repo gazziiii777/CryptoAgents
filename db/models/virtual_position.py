@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy import Column, ForeignKey, Index
 from sqlmodel import Field, SQLModel
 
-from db.models._enums import ExitReason, PositionSide, PositionState
+from db.models._enums import ExitReason, PositionSide, PositionState, StopStage
 from db.types import DecimalText, UTCDateTime
 
 
@@ -48,6 +48,7 @@ class VirtualPosition(SQLModel, table=True):
 
     stop_price: Decimal = Field(sa_column=Column(DecimalText, nullable=False))
     target_price: Decimal = Field(sa_column=Column(DecimalText, nullable=False))
+    stop_stage: StopStage = Field(default=StopStage.INITIAL)
 
     exit_ts: datetime | None = Field(
         default=None, sa_column=Column(UTCDateTime, nullable=True)

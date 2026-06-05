@@ -6,8 +6,8 @@ from enum import Enum
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.analysis import CandidateSignal
-from app.models.liquidations import NormalizedLiquidation
+from app.domain.models.analysis import CandidateSignal
+from app.domain.models.liquidations import NormalizedLiquidation
 from core.constants.time import MS_PER_SECOND, SECONDS_PER_HOUR
 from core.settings import settings
 from db.models import Signal, VirtualPosition

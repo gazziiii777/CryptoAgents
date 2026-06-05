@@ -23,9 +23,9 @@ sys.path.insert(0, str(_ROOT))
 load_dotenv(_ROOT / ".env")
 
 from core.settings import settings  # noqa: E402
-from app.clients.binance.client import BinanceClient  # noqa: E402
-from app.clients.ccxt.client import CcxtClient  # noqa: E402
-from app.screener.universe import get_liquid_perp_pairs  # noqa: E402
+from app.adapters.clients.binance.client import BinanceClient  # noqa: E402
+from app.adapters.clients.ccxt.client import CcxtClient  # noqa: E402
+from app.services.screener.universe import get_liquid_perp_pairs  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

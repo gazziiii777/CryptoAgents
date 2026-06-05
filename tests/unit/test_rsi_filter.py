@@ -1,6 +1,6 @@
 import pytest
 
-from app.pipeline.analysis import _rsi_extreme_blocks
+from app.engines.worker.pipeline.analysis import _rsi_extreme_blocks
 
 
 @pytest.mark.unit

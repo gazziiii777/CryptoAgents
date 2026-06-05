@@ -1,5 +1,5 @@
-from app.clients.binance.models import CVDPoint
-from app.screener.indicators import calc_spot_perp_divergence
+from app.adapters.clients.binance.models import CVDPoint
+from app.domain.indicators import calc_spot_perp_divergence
 
 
 def _cvd(values: list[float]) -> list[CVDPoint]:

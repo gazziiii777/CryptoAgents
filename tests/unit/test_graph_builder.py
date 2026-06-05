@@ -4,8 +4,8 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from app.agents.graph_builder import build_graph
-from app.agents.models import GraphConfig
+from app.services.agents.graph_builder import build_graph
+from app.services.agents.models import GraphConfig
 
 _YAML = """
 nodes:

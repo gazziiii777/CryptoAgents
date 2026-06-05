@@ -1,6 +1,6 @@
 import asyncio
 
-from app.collector.runner import run_collector
+from app.engines.collector.runner import run_collector
 
 
 def collect_liquidations() -> None:

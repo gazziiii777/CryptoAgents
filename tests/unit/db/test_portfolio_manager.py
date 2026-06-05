@@ -5,8 +5,8 @@ from decimal import Decimal
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.models.setup import FinalSignal
-from app.portfolio.manager import PortfolioManager
+from app.domain.models.setup import FinalSignal
+from app.services.entry.manager import PortfolioManager
 from db.models import (
     Account,
     Decision,

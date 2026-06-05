@@ -10,7 +10,7 @@ from core.constants.time import SECONDS_PER_DAY
 load_dotenv()
 
 from app.logger import setup_logging  # noqa: E402
-from app.pipeline.runner import run_pipeline  # noqa: E402
+from app.engines.worker.pipeline.runner import run_pipeline  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
-from app.models.screener import empty_signals
-from app.screener.criteria import compute_direction, compute_score
+from app.domain.models.screener import empty_signals
+from app.services.screener.criteria import compute_direction, compute_score
 
 
 def test_empty_signals_score_zero_direction_mixed():

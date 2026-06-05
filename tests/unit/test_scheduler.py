@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.scheduler import seconds_until_next_tick
+from app.engines.worker.scheduler import seconds_until_next_tick
 
 _LAG = 60
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.notifications.positions import (
+from app.adapters.notifications.positions import (
     _format_close,
     _format_open,
     _pct,
@@ -120,9 +120,9 @@ async def test_notify_open_is_noop_when_disabled(
     disabled = settings.model_copy(
         update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
     )
-    monkeypatch.setattr("app.notifications.positions.settings", disabled)
+    monkeypatch.setattr("app.adapters.notifications.positions.settings", disabled)
     client_cls = MagicMock()
-    monkeypatch.setattr("app.notifications.positions.TelegramClient", client_cls)
+    monkeypatch.setattr("app.adapters.notifications.positions.TelegramClient", client_cls)
 
     await notify_position_opened(_position(), 0.52, Decimal("2000"))
 
@@ -136,9 +136,9 @@ async def test_notify_close_is_noop_when_disabled(
     disabled = settings.model_copy(
         update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
     )
-    monkeypatch.setattr("app.notifications.positions.settings", disabled)
+    monkeypatch.setattr("app.adapters.notifications.positions.settings", disabled)
     client_cls = MagicMock()
-    monkeypatch.setattr("app.notifications.positions.TelegramClient", client_cls)
+    monkeypatch.setattr("app.adapters.notifications.positions.TelegramClient", client_cls)
 
     await notify_position_closed(_position(), Decimal("2000"))
 

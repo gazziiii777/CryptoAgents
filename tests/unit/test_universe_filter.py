@@ -1,4 +1,4 @@
-from app.screener.universe import _filter_perp_pairs
+from app.services.screener.universe import _filter_perp_pairs, _intersect_universe
 
 
 def _market(underlying_type: str, base: str = "BTC") -> dict[str, object]:
@@ -65,3 +65,26 @@ def test_excludes_market_without_underlying_type():
     tickers = {"WAT/USDT:USDT": {"quoteVolume": 1e9}}
 
     assert _filter_perp_pairs(markets, tickers, "USDT", 5e6) == []
+
+
+def test_keeps_market_without_underlying_type_when_gate_off():
+    markets = {
+        "WAT/USDT:USDT": {"swap": True, "base": "WAT", "quote": "USDT", "active": True}
+    }
+    tickers = {"WAT/USDT:USDT": {"quoteVolume": 1e9}}
+
+    result = _filter_perp_pairs(
+        markets, tickers, "USDT", 5e6, require_coin_underlying=False
+    )
+    assert result == ["WAT/USDT:USDT"]
+
+
+def test_intersect_keeps_only_tradable_preserving_order():
+    primary = ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT", "FOO/USDT:USDT"]
+    tradable = {"SOL/USDT:USDT", "BTC/USDT:USDT"}
+
+    assert _intersect_universe(primary, tradable) == ["BTC/USDT:USDT", "SOL/USDT:USDT"]
+
+
+def test_intersect_no_overlap_yields_empty():
+    assert _intersect_universe(["AAA/USDT:USDT"], {"BBB/USDT:USDT"}) == []

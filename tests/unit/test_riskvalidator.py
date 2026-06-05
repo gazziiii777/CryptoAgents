@@ -1,5 +1,5 @@
-from app.models.setup import CryptoSetup
-from app.riskvalidator import validate_risk
+from app.domain.models.setup import CryptoSetup
+from app.domain.synthesis.riskvalidator import validate_risk
 
 
 def _setup(

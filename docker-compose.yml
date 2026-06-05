@@ -76,12 +76,13 @@ services:
         condition: service_completed_successfully
         required: false
 
-  # Always-on монитор открытых позиций: раз в 5 мин шлёт Telegram-алерт при сдвиге
-  # стопа (безубыток/трейлинг). Notify-only — не закрывает позиции (это за worker).
-  monitor:
+  # Always-on движок управления позициями: каждые POSITION_MANAGER_INTERVAL_S исполняет
+  # выходы (стоп/тейк/безубыток/трейлинг/экспирация/funding/делистинг) + алерты о сдвиге
+  # стопа. Единственный писатель выходов (worker открывает, этот закрывает).
+  position-manager:
     build: .
     env_file: .env
-    command: ["monitor-positions"]
+    command: ["manage-positions"]
     restart: unless-stopped
     stop_grace_period: 10s
     depends_on:
@@ -96,6 +97,21 @@ services:
     command: ["collect-liquidations"]
     restart: unless-stopped
     stop_grace_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # REST + WebSocket analytics API для фронта (uvicorn). Читает ту же БД, что и
+  # worker; live-карта ликвидности и mark-цены тянутся из CCXT, поток ликвидаций —
+  # из ws-стримов бирж (Binance/OKX/Bybit) через общий fan-out hub.
+  api:
+    build: .
+    env_file: .env
+    command: ["api"]
+    restart: unless-stopped
+    stop_grace_period: 10s
+    ports:
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -133,3 +149,10 @@ services:
         condition: service_healthy
     volumes:
       - ./migrations:/app/migrations
+
+# Стабильное имя дефолтной сети (вместо автогенерируемого <project>_default).
+# Нужно, чтобы внешние потребители API (напр. отдельный фронт-стек) могли
+# подключиться к ней по имени. Бэкенд про конкретных потребителей не знает.
+networks:
+  default:
+    name: tradingagents

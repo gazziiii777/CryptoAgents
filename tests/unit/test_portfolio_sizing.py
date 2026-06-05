@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.portfolio.sizing import compute_qty, compute_qty_by_margin, confidence_risk_pct
+from app.domain.risk.sizing import compute_qty, compute_qty_by_margin, confidence_risk_pct
 
 _GATE = 0.55
 _MIN = Decimal("0.005")

@@ -1,5 +1,5 @@
-from app.clients.ccxt.models import OrderBook, OrderBookLevel
-from app.liquidity.imbalance import calc_book_imbalance
+from app.adapters.clients.ccxt.models import OrderBook, OrderBookLevel
+from app.services.liquidity.imbalance import calc_book_imbalance
 
 
 def _book(bid_amt: float, ask_amt: float, n: int = 5) -> OrderBook:

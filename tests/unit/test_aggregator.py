@@ -1,7 +1,7 @@
 import pytest
 
-from app.aggregator import aggregate_signals
-from app.models.analysis import (
+from app.domain.synthesis.aggregator import aggregate_signals
+from app.domain.models.analysis import (
     DerivativesReport,
     MacroReport,
     SentimentReport,

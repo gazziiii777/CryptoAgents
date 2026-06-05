@@ -1,7 +1,7 @@
-from app.analysts.macro import _render_user_prompt, analyze_macro
-from app.models.analysis import MacroReport
+from app.services.analysts.macro import _render_user_prompt, analyze_macro
+from app.domain.models.analysis import MacroReport
 from core.prompts.loader import load_prompt
-from app.clients.coingecko.models import MacroSnapshot
+from app.adapters.clients.coingecko.models import MacroSnapshot
 
 _MACRO = MacroSnapshot(
     btc_dominance=58.1,

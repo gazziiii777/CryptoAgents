@@ -1,7 +1,7 @@
-from app.agents.setup.graph import build_setup
-from app.agents.setup.nodes import _validate_intent
-from app.models.analysis import TechnicalReport
-from app.models.setup import EntryReference, SetupIntent, StopReference, TargetReference
+from app.services.agents.setup.graph import build_setup
+from app.services.agents.setup.nodes import _validate_intent
+from app.domain.models.analysis import TechnicalReport
+from app.domain.models.setup import EntryReference, SetupIntent, StopReference, TargetReference
 
 _TECH = TechnicalReport(
     market_structure="uptrend, price above EMAs",

@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
-from app.clients.coinglass.models import LiquidationHeatmapData
-from app.clients.lunarcrush.models import LunarCrushCoinMetrics, LunarCrushPost
+from app.adapters.clients.coinglass.models import LiquidationHeatmapData
+from app.adapters.clients.lunarcrush.models import LunarCrushCoinMetrics, LunarCrushPost
 
 
 def test_lunarcrush_metrics_coerces_string_numbers():

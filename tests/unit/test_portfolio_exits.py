@@ -3,8 +3,8 @@ from decimal import Decimal
 
 import pytest
 
-from app.clients.ccxt.models import OHLCVCandle
-from app.portfolio.exits import (
+from app.adapters.clients.ccxt.models import OHLCVCandle
+from app.domain.risk.exits import (
     current_managed_stop,
     evaluate_candle_exit,
     funding_cycles,

@@ -45,6 +45,12 @@ class ExitReason(StrEnum):
     DELISTED = "delisted"
 
 
+class StopStage(StrEnum):
+    INITIAL = "initial"
+    BREAKEVEN = "breakeven"
+    TRAILING = "trailing"
+
+
 class EventType(StrEnum):
     SIGNAL_GENERATED = "signal_generated"
     POSITION_OPENED = "position_opened"

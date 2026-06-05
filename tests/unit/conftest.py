@@ -18,8 +18,8 @@ def _disable_telegram(monkeypatch: pytest.MonkeyPatch) -> None:
     disabled = settings.model_copy(
         update={"TELEGRAM_BOT_TOKEN": None, "TELEGRAM_CHAT_ID": None}
     )
-    monkeypatch.setattr("app.notifications.positions.settings", disabled)
-    monkeypatch.setattr("app.notifications.alerts.settings", disabled)
+    monkeypatch.setattr("app.adapters.notifications.positions.settings", disabled)
+    monkeypatch.setattr("app.adapters.notifications.alerts.settings", disabled)
 
 
 @pytest_asyncio.fixture

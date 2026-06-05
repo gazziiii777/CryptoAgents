@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.portfolio.models import PortfolioState
+from app.domain.risk.models import PortfolioState
 
 
 @pytest.mark.unit

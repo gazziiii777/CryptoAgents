@@ -4,11 +4,12 @@ from typing import Literal, cast
 
 import typer
 
-from app.clients.ccxt.client import CcxtClient
-from app.models.setup import CryptoSetup, FinalSignal
-from app.portfolio.account_service import ensure_default_account
-from app.portfolio.manager import PortfolioManager
-from app.portfolio.watcher import PositionWatcher
+from app.adapters.clients.ccxt.client import CcxtClient
+from app.domain.models.setup import CryptoSetup, FinalSignal
+from app.services.positions.account_service import ensure_default_account
+from app.services.positions.dispatch import dispatch_closed_trade
+from app.services.entry.manager import PortfolioManager
+from app.services.positions.watcher import PositionWatcher
 from db._time import utcnow
 from db.engine import session_scope
 from db.models import (
@@ -75,10 +76,11 @@ async def _force_close(position_id: int) -> str | None:
         candles = await ccxt.fetch_ohlcv(position.symbol, timeframe="4h", limit=1)
         price = Decimal(str(candles[-1].close)) if candles else position.entry_price
         watcher = PositionWatcher(session=session, ccxt=ccxt, universe_symbols=set())
-        pnl = await watcher.force_close(
+        trade = await watcher.force_close(
             account=account, position=position, price=price, reason=ExitReason.MANUAL
         )
-        return str(pnl)
+    await dispatch_closed_trade(trade)
+    return str(trade.realized_pnl)
 
 
 def force_close(

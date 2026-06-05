@@ -1,6 +1,6 @@
-from app.clients.binance.models import OISnapshot
-from app.clients.ccxt.models import OHLCVCandle
-from app.screener.indicators import calc_positioning_regime, calc_squeeze_setup
+from app.adapters.clients.binance.models import OISnapshot
+from app.adapters.clients.ccxt.models import OHLCVCandle
+from app.domain.indicators import calc_positioning_regime, calc_squeeze_setup
 
 
 def _candles(start: float, end: float, n: int = 8) -> list[OHLCVCandle]:

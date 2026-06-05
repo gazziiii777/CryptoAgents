@@ -1,4 +1,4 @@
-from app.clients.lunarcrush.client import _topic_slug
+from app.adapters.clients.lunarcrush.client import _topic_slug
 
 
 def test_symbol_plus_single_word_name():

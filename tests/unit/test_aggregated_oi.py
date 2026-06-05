@@ -1,5 +1,5 @@
-from app.clients.coinglass.models import OIAggregatedCandle
-from app.screener.indicators import calc_aggregated_oi_trend
+from app.adapters.clients.coinglass.models import OIAggregatedCandle
+from app.domain.indicators import calc_aggregated_oi_trend
 
 
 def _candles(values: list[float]) -> list[OIAggregatedCandle]:

@@ -1,5 +1,5 @@
-from app.clients.ccxt.models import OHLCVCandle
-from app.screener.indicators import (
+from app.adapters.clients.ccxt.models import OHLCVCandle
+from app.domain.indicators import (
     calc_adx,
     calc_atr,
     calc_macd,

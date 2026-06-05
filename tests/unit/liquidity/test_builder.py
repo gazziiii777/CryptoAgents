@@ -1,5 +1,5 @@
-from app.clients.ccxt.models import OHLCVCandle, OrderBook, OrderBookLevel
-from app.liquidity.builder import build_liquidity_map
+from app.adapters.clients.ccxt.models import OHLCVCandle, OrderBook, OrderBookLevel
+from app.services.liquidity.builder import build_liquidity_map
 
 
 def _candle(typical: float, volume: float) -> OHLCVCandle:

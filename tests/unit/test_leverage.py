@@ -1,6 +1,6 @@
 import pytest
 
-from app.portfolio.leverage import compute_leverage
+from app.domain.risk.leverage import compute_leverage
 
 _CAP = 10
 

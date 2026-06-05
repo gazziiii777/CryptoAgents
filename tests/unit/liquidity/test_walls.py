@@ -1,5 +1,5 @@
-from app.clients.ccxt.models import OrderBook, OrderBookLevel
-from app.liquidity.walls import detect_walls
+from app.adapters.clients.ccxt.models import OrderBook, OrderBookLevel
+from app.services.liquidity.walls import detect_walls
 
 
 def _book(

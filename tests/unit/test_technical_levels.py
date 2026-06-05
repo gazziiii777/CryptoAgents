@@ -1,5 +1,5 @@
-from app.agents.technical.levels import compute_facts
-from app.clients.ccxt.models import OHLCVCandle
+from app.services.agents.technical.levels import compute_facts
+from app.adapters.clients.ccxt.models import OHLCVCandle
 
 
 def _candles(n: int, base: float = 100.0) -> list[OHLCVCandle]:

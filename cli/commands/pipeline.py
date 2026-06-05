@@ -2,7 +2,7 @@ import asyncio
 
 import typer
 
-from app.pipeline.runner import run_pipeline
+from app.engines.worker.pipeline.runner import run_pipeline
 
 
 def pipeline(

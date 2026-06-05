@@ -1,8 +1,8 @@
 import pytest
 
-from app.analysts.devils_advocate import apply_devils_advocate, run_devils_advocate
-from app.models.analysis import DevilsAdvocateReport, SignalSynthesis
-from app.models.setup import CryptoSetup
+from app.services.analysts.devils_advocate import apply_devils_advocate, run_devils_advocate
+from app.domain.models.analysis import DevilsAdvocateReport, SignalSynthesis
+from app.domain.models.setup import CryptoSetup
 
 
 def _synthesis(confluence: float = 0.7) -> SignalSynthesis:

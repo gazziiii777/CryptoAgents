@@ -1,7 +1,7 @@
 import pytest
 
-from app.analysts.debate import apply_trader_verdict, run_debate
-from app.models.analysis import (
+from app.services.analysts.debate import apply_trader_verdict, run_debate
+from app.domain.models.analysis import (
     DerivativesReport,
     MacroReport,
     ResearchCase,

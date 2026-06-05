@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from db.models import ExitReason, PositionState, VirtualPosition
@@ -16,6 +16,10 @@ class VirtualPositionRepo:
         await self._session.flush()
         return position
 
+    async def save(self, position: VirtualPosition) -> None:
+        self._session.add(position)
+        await self._session.flush()
+
     async def get(self, position_id: int) -> VirtualPosition | None:
         return await self._session.get(VirtualPosition, position_id)
 
@@ -25,6 +29,20 @@ class VirtualPositionRepo:
                 VirtualPosition.account_id == account_id,
                 VirtualPosition.state == PositionState.OPEN,
             )
+        )
+        return list(result.all())
+
+    async def list_recent_closed(
+        self, account_id: int, limit: int = 50
+    ) -> list[VirtualPosition]:
+        result = await self._session.exec(
+            select(VirtualPosition)
+            .where(
+                VirtualPosition.account_id == account_id,
+                VirtualPosition.state == PositionState.CLOSED,
+            )
+            .order_by(col(VirtualPosition.exit_ts).desc())
+            .limit(limit)
         )
         return list(result.all())
 

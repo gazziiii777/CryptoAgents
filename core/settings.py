@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     )
 
     EXCHANGE_ID: str = "binance"
+    EXECUTION_EXCHANGE_ID: str = "bybit"
+    EXECUTION_UNIVERSE_FILTER: bool = True
     QUOTE_CURRENCY: str = _QUOTE_CURRENCY
 
     DB_HOST: str = "db"
@@ -157,6 +159,7 @@ class Settings(BaseSettings):
     CONFLUENCE_GATE: float = Field(default=0.50, ge=0.0, le=1.0)
     CONFIDENCE_SHRINKAGE: float = Field(default=0.85, ge=0.1, le=1.0)
     RISK_REWARD_MIN: float = Field(default=1.5, ge=1.0, le=10.0)
+    MAX_ENTRY_DRIFT_PCT: float = Field(default=0.006, gt=0.0, le=0.1)
     FUNDING_COST_MAX_PCT: float = Field(default=0.01, ge=0.0, le=1.0)
     FUNDING_EXTREME_PCT: float = Field(default=0.0030, gt=0.0, le=1.0)
 
@@ -179,9 +182,13 @@ class Settings(BaseSettings):
     EXIT_CANDLE_LIMIT: int = Field(default=1000, ge=1, le=1500)
     KEY_ALERT_COOLDOWN_S: int = Field(default=1800, ge=60, le=86400)
 
-    MONITOR_INTERVAL_S: int = Field(default=300, ge=30, le=3600)
-    MONITOR_TIMEFRAME: str = "5m"
-    MONITOR_CANDLE_LIMIT: int = Field(default=300, ge=1, le=1500)
+    POSITION_MANAGER_INTERVAL_S: int = Field(default=300, ge=30, le=3600)
+
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = Field(default=8000, ge=1, le=65535)
+    API_CORS_ORIGINS: list[str] = Field(
+        default=["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
 
     TELEGRAM_BOT_TOKEN: str | None = None
     TELEGRAM_CHAT_ID: str | None = None

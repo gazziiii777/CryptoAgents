@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.clients.lunarcrush.models import (
+from app.adapters.clients.lunarcrush.models import (
     CoinTimeSeriesPoint,
     LunarCrushCoinMetrics,
     LunarCrushNewsItem,
@@ -8,7 +8,7 @@ from app.clients.lunarcrush.models import (
     WhatsupSummary,
     WhatsupTheme,
 )
-from app.enricher.insight import derive_social_insight
+from app.services.enricher.insight import derive_social_insight
 
 
 def test_spike_bullish_long_confirms_and_improving():

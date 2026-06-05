@@ -1,13 +1,13 @@
 import pytest
 
-from app.analysts.derivatives import (
+from app.services.analysts.derivatives import (
     _render_user_prompt,
     analyze_derivatives,
     classify_funding_squeeze_risk,
 )
-from app.models.analysis import DerivativesReport
+from app.domain.models.analysis import DerivativesReport
 from core.prompts.loader import load_prompt
-from app.models.screener import empty_signals
+from app.domain.models.screener import empty_signals
 
 
 @pytest.mark.parametrize(

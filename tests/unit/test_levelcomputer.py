@@ -1,6 +1,6 @@
-from app.clients.ccxt.models import OHLCVCandle
-from app.levelcomputer import resolve_setup
-from app.models.setup import EntryReference, SetupIntent, StopReference, TargetReference
+from app.adapters.clients.ccxt.models import OHLCVCandle
+from app.domain.synthesis.levelcomputer import resolve_setup
+from app.domain.models.setup import EntryReference, SetupIntent, StopReference, TargetReference
 
 
 def _candles_4h(n: int = 40) -> list[OHLCVCandle]:

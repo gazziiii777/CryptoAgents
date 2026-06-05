@@ -3,8 +3,8 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from app.clients.llm.client import LLMClient
-from app.clients.llm.models import LLMUsage
+from app.adapters.clients.llm.client import LLMClient
+from app.adapters.clients.llm.models import LLMUsage
 from app.llm_gateway.budget import DailyBudgetGuard
 from db.engine import session_scope
 from db.models import EventType

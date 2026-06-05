@@ -4,9 +4,9 @@ from decimal import Decimal
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
-from app.models.setup import CryptoSetup
-from app.portfolio.watcher import PositionWatcher
+from app.adapters.clients.ccxt.models import FundingRateHistoryEntry, OHLCVCandle
+from app.domain.models.setup import CryptoSetup
+from app.services.positions.watcher import PositionWatcher
 from core.constants.time import MS_PER_SECOND
 from db.models import (
     Account,
@@ -102,7 +102,7 @@ async def test_watcher_closes_on_target_and_credits_pnl(session: AsyncSession) -
 
     closed = await watcher.run(account)
 
-    assert closed == 1
+    assert len(closed.closed_trades) == 1
     position = await VirtualPositionRepo(session).list_open(account.id)  # type: ignore[arg-type]
     assert position == []
     assert account.current_balance > Decimal("2000")
@@ -116,7 +116,7 @@ async def test_watcher_delists_when_symbol_left_universe(session: AsyncSession) 
 
     closed = await watcher.run(account)
 
-    assert closed == 1
+    assert len(closed.closed_trades) == 1
     repo = VirtualPositionRepo(session)
     closed_positions = [
         p
@@ -135,7 +135,7 @@ async def test_watcher_keeps_open_when_no_exit(session: AsyncSession) -> None:
 
     closed = await watcher.run(account)
 
-    assert closed == 0
+    assert len(closed.closed_trades) == 0
     positions = await VirtualPositionRepo(session).list_open(account.id)  # type: ignore[arg-type]
     assert len(positions) == 1
 
@@ -149,7 +149,7 @@ async def test_watcher_no_candles_does_not_count_as_closed(
 
     closed = await watcher.run(account)
 
-    assert closed == 0
+    assert len(closed.closed_trades) == 0
     positions = await VirtualPositionRepo(session).list_open(account.id)  # type: ignore[arg-type]
     assert len(positions) == 1
 

@@ -1,0 +1,37 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:domain-purity]
+name = Domain must not depend on services or engines
+type = forbidden
+source_modules =
+    app.domain
+forbidden_modules =
+    app.services
+    app.engines
+
+[importlinter:contract:adapters-stay-low]
+name = Adapters must not depend on services or engines
+type = forbidden
+source_modules =
+    app.adapters
+forbidden_modules =
+    app.services
+    app.engines
+
+[importlinter:contract:services-below-engines]
+name = Services must not depend on engines
+type = forbidden
+source_modules =
+    app.services
+forbidden_modules =
+    app.engines
+
+[importlinter:contract:engines-independent]
+name = Engines must not depend on each other
+type = independence
+modules =
+    app.engines.worker
+    app.engines.position_manager
+    app.engines.collector
+    app.engines.api

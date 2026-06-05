@@ -6,6 +6,7 @@ from db.models.virtual_position import (
     ExitReason,
     PositionSide,
     PositionState,
+    StopStage,
     VirtualPosition,
 )
 
@@ -21,6 +22,8 @@ __all__ = [
     "PositionState",
     "Signal",
     "SignalSource",
+    "StopStage",
     "SystemState",
     "VirtualPosition",
+    "StopStage",
 ]

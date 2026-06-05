@@ -1,6 +1,6 @@
-from app.models.analysis import SignalSynthesis
-from app.models.setup import CryptoSetup
-from app.signalformatter import format_signal
+from app.domain.models.analysis import SignalSynthesis
+from app.domain.models.setup import CryptoSetup
+from app.domain.synthesis.signalformatter import format_signal
 
 
 def test_format_signal_combines_setup_and_synthesis():

@@ -4,7 +4,7 @@ from datetime import datetime
 from pydantic import ValidationError
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.clients.llm.models import LLMUsage
+from app.adapters.clients.llm.models import LLMUsage
 from app.llm_gateway.errors import LLMBudgetExceededError
 from core.settings import settings
 from db._time import utcnow

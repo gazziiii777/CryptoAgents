@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.models.screener import SignalDetails
+from app.domain.models.screener import SignalDetails
 from core.settings import settings
 from db.models import Decision, Direction, Signal
 from db.research.writer import _build_agent_outputs, _build_signal_record
