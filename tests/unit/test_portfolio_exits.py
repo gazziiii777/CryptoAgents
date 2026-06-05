@@ -5,6 +5,7 @@ import pytest
 
 from app.clients.ccxt.models import OHLCVCandle
 from app.portfolio.exits import (
+    current_managed_stop,
     evaluate_candle_exit,
     funding_cycles,
     is_expired,
@@ -194,3 +195,30 @@ def test_funding_cycles() -> None:
     assert funding_cycles(entry, datetime(2026, 1, 1, 9, tzinfo=timezone.utc)) == 1
     assert funding_cycles(entry, datetime(2026, 1, 1, 17, tzinfo=timezone.utc)) == 2
     assert funding_cycles(entry, entry) == 0
+
+
+def _state_long(candles: list[OHLCVCandle]) -> tuple[Decimal, ExitReason]:
+    return current_managed_stop(
+        PositionSide.LONG, Decimal("100"), Decimal("95"), candles, _TS, 1.0, 1.5, 1.0
+    )
+
+
+@pytest.mark.unit
+def test_current_stop_stays_initial_below_breakeven() -> None:
+    stop, reason = _state_long([_c(0, 102, 101)])  # peak +0.4R < 1.0
+    assert reason == ExitReason.STOP
+    assert stop == Decimal("95")
+
+
+@pytest.mark.unit
+def test_current_stop_breakeven_after_1r() -> None:
+    stop, reason = _state_long([_c(0, 105, 101)])  # +1R
+    assert reason == ExitReason.BREAKEVEN
+    assert stop == Decimal("100")
+
+
+@pytest.mark.unit
+def test_current_stop_trailing_after_activation() -> None:
+    stop, reason = _state_long([_c(0, 110, 101)])  # +2R, trail dist 1R -> 110-5
+    assert reason == ExitReason.TRAILING_STOP
+    assert stop == Decimal("105")
